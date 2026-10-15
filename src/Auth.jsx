@@ -2,6 +2,8 @@ import { useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input, Logo } from "./ui";
 import CamposJugador from "./CamposJugador";
+import SelectorFoto from "./SelectorFoto";
+import { redimensionar } from "./lib/imagen";
 import { GENEROS, MANOS } from "./lib/deportes";
 
 export default function Auth({ onPerfilActualizado }) {
@@ -35,7 +37,8 @@ export default function Auth({ onPerfilActualizado }) {
     const cambios = { edad, genero: f.genero, deportes: f.deportes, pie: f.pie, mano: f.mano, posiciones: f.posiciones, posicion: f.posiciones.futbol ?? null };
     if (foto) {
       const ruta = `${data.user.id}/avatar`;
-      const up = await supabase.storage.from("avatars").upload(ruta, foto, { upsert: true, contentType: foto.type });
+      const blob = await redimensionar(foto);
+      const up = await supabase.storage.from("avatars").upload(ruta, blob, { upsert: true, contentType: blob.type });
       if (!up.error) cambios.avatar_url = supabase.storage.from("avatars").getPublicUrl(ruta).data.publicUrl + `?v=${Date.now()}`;
     }
     await supabase.from("profiles").update(cambios).eq("id", data.user.id);
@@ -51,10 +54,7 @@ export default function Auth({ onPerfilActualizado }) {
           <input className={input} placeholder="Nombre completo" required value={f.nombre} onChange={set("nombre")} />
           <input className={input} placeholder="Apodo" required value={f.apodo} onChange={set("apodo")} />
           <CamposJugador f={f} setF={setF} />
-          <label className="block text-sm font-semibold">
-            Foto de perfil
-            <input type="file" accept="image/*" className="mt-1 block w-full text-sm" onChange={(e) => setFoto(e.target.files[0] ?? null)} />
-          </label>
+          <SelectorFoto perfil={{ apodo: f.apodo }} archivo={foto} onElegir={setFoto} etiqueta="Foto de perfil (opcional)" />
         </>
       )}
       <input className={input} type="email" placeholder="Email (Gmail)" required value={f.email} onChange={set("email")} />

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { supabase } from "./lib/supabase";
-import { btn, input, Avatar } from "./ui";
+import { btn, input } from "./ui";
+import SelectorFoto from "./SelectorFoto";
+import { redimensionar } from "./lib/imagen";
 import CamposJugador from "./CamposJugador";
 import { REDES, normalizarRed } from "./lib/redes";
 import { GENEROS, MANOS } from "./lib/deportes";
@@ -17,6 +19,7 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
     posiciones: perfil?.posiciones ?? (perfil?.posicion ? { futbol: perfil.posicion } : {}),
     password: "",
     descripcion: perfil?.descripcion ?? "",
+    mostrar_amigos: perfil?.mostrar_amigos ?? true,
     instagram: perfil?.redes?.instagram ?? "",
     whatsapp: perfil?.redes?.whatsapp ?? "",
     tiktok: perfil?.redes?.tiktok ?? "",
@@ -48,11 +51,13 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
       posiciones: f.posiciones,
       posicion: f.posiciones.futbol ?? null,
       descripcion: f.descripcion.trim() || null,
+      mostrar_amigos: f.mostrar_amigos,
       redes,
     };
     if (foto) {
       const ruta = `${perfil.id}/avatar`;
-      const up = await supabase.storage.from("avatars").upload(ruta, foto, { upsert: true, contentType: foto.type });
+      const blob = await redimensionar(foto);
+      const up = await supabase.storage.from("avatars").upload(ruta, blob, { upsert: true, contentType: blob.type });
       if (up.error) { setError("No se pudo subir la foto."); return setGuardando(false); }
       cambios.avatar_url = supabase.storage.from("avatars").getPublicUrl(ruta).data.publicUrl + `?v=${Date.now()}`;
     }
@@ -70,13 +75,7 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
     <form onSubmit={guardar} className="space-y-4">
       <button type="button" onClick={onCerrar} className="-ml-2 inline-flex min-h-11 items-center px-2 font-semibold text-cesped">Cancelar</button>
       <h2 className="text-3xl font-extrabold">Editar perfil</h2>
-      <div className="flex items-center gap-3">
-        <Avatar perfil={perfil} size={56} />
-        <label className="text-sm font-semibold">
-          Cambiar foto
-          <input type="file" accept="image/*" className="mt-1 block text-sm" onChange={(e) => setFoto(e.target.files[0] ?? null)} />
-        </label>
-      </div>
+      <SelectorFoto perfil={{ ...perfil, apodo: f.apodo }} archivo={foto} onElegir={setFoto} />
       <label className="block text-sm font-semibold">Nombre completo
         <input className={input} required value={f.nombre} onChange={set("nombre")} />
       </label>
@@ -98,6 +97,14 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
         ))}
         <p className="text-sm text-tinta/70">Poné tu usuario o pegá el link: a los demás les aparece un botón que lleva a tu perfil. Ojo: tu número de WhatsApp lo puede ver cualquier usuario de DOPARTI.</p>
       </fieldset>
+      <label className="flex items-start gap-3 rounded-lg bg-panel p-3 text-sm">
+        <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-pasto" checked={f.mostrar_amigos}
+          onChange={(e) => setF({ ...f, mostrar_amigos: e.target.checked })} />
+        <span>
+          <b className="block">Mostrar mi lista de amigos</b>
+          <span className="text-tinta/70">Si la desactivás, solo la ven tus amigos. Los amigos en común se siguen mostrando.</span>
+        </span>
+      </label>
       <label className="block text-sm font-semibold">Nueva contraseña (opcional)
         <input className={input} type="password" minLength={6} placeholder="Dejala vacía para no cambiarla" value={f.password} onChange={set("password")} />
       </label>
