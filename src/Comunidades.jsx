@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input } from "./ui";
+import { cuando } from "./lib/logica";
 
-export default function Comunidades({ onAbrir }) {
+export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
   const [lista, setLista] = useState([]);
   const [nombre, setNombre] = useState("");
   const [codigo, setCodigo] = useState("");
   const [error, setError] = useState("");
   const [zonas, setZonas] = useState([]);
   const [zona, setZona] = useState("");
+  const [proximos, setProximos] = useState([]);
 
   const cargar = async () => {
     const { data } = await supabase.from("comunidades").select("*, zonas(nombre, provincia, lat, lng)").order("created_at", { ascending: false });
@@ -22,6 +24,22 @@ export default function Comunidades({ onAbrir }) {
       setZona(z.find((x) => x.nombre === "Río Cuarto")?.id ?? z[0]?.id ?? "");
     });
   }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from("inscripciones")
+      .select("partidos(id, tipo, fecha, hora, a_coordinar, sede, comunidades(nombre))")
+      .eq("usuario_id", userId)
+      .then(({ data }) => {
+        const desde = Date.now() - 3 * 3600 * 1000; // un partido sigue "próximo" hasta 3 horas después de empezar
+        const sinFecha = (p) => p.a_coordinar || !p.fecha || !p.hora;
+        const t = (p) => (sinFecha(p) ? Infinity : new Date(`${p.fecha}T${p.hora}`).getTime());
+        const lista = (data ?? []).map((d) => d.partidos).filter(Boolean)
+          .filter((p) => t(p) >= desde)
+          .sort((a, b) => (t(a) === t(b) ? 0 : t(a) < t(b) ? -1 : 1));
+        setProximos(lista.slice(0, 5));
+      });
+  }, [userId]);
 
   async function crear() {
     const { data, error } = await supabase.rpc("crear_comunidad", { p_nombre: nombre.trim(), p_zona: zona || null });
@@ -40,6 +58,22 @@ export default function Comunidades({ onAbrir }) {
 
   return (
     <div className="space-y-6">
+      {proximos.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-xl font-extrabold">Tus próximos partidos</h2>
+          <ul className="space-y-2">
+            {proximos.map((p) => (
+              <li key={p.id}>
+                <button onClick={() => onAbrirPartido(p.id)} className="w-full rounded-2xl bg-panel p-4 text-left transition hover:bg-panel-alto">
+                  <span className="font-display text-lg font-extrabold">Fútbol {p.tipo}</span>
+                  <span className="block capitalize">{cuando(p)}</span>
+                  <span className="block text-sm text-tinta/70">{p.sede}{p.comunidades?.nombre && ` · ${p.comunidades.nombre}`}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section>
         <h2 className="mb-2 text-xl font-extrabold">Tus comunidades</h2>
         {lista.length === 0 ? (

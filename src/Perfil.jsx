@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "./lib/supabase";
-import { btn, input, Avatar, Nivel, POSICIONES, PIES } from "./ui";
+import { btn, input, Avatar, POSICIONES, PIES } from "./ui";
 
 export default function Perfil({ perfil, onCerrar, onGuardado }) {
   const [f, setF] = useState({
@@ -14,12 +14,7 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
   const [foto, setFoto] = useState(null);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
-  const [jugados, setJugados] = useState(0);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-
-  useEffect(() => {
-    supabase.rpc("partidos_jugados", { p_uid: perfil.id }).then(({ data }) => setJugados(data ?? 0));
-  }, [perfil.id]);
 
   async function guardar(e) {
     e.preventDefault();
@@ -50,9 +45,8 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
 
   return (
     <form onSubmit={guardar} className="space-y-4">
-      <button type="button" onClick={onCerrar} className="-ml-2 inline-flex min-h-11 items-center px-2 font-semibold text-cesped">Volver</button>
-      <h2 className="text-3xl font-extrabold">Tu perfil</h2>
-      <Nivel jugados={jugados} />
+      <button type="button" onClick={onCerrar} className="-ml-2 inline-flex min-h-11 items-center px-2 font-semibold text-cesped">Cancelar</button>
+      <h2 className="text-3xl font-extrabold">Editar perfil</h2>
       <div className="flex items-center gap-3">
         <Avatar perfil={perfil} size={56} />
         <label className="text-sm font-semibold">

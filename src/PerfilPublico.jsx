@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input, Avatar, Cargando, Nivel, nombrePie } from "./ui";
 
-export default function PerfilPublico({ id, userId, onVolver }) {
+export default function PerfilPublico({ id, userId, onVolver, onEditar }) {
   const [perfil, setPerfil] = useState(undefined);
   const [jugados, setJugados] = useState(0);
   const [comentarios, setComentarios] = useState([]);
@@ -84,6 +84,8 @@ export default function PerfilPublico({ id, userId, onVolver }) {
         </div>
       </header>
 
+      {esMio && <button onClick={onEditar} className={`${btn} bg-panel`}>Editar perfil</button>}
+
       {datos.length > 0 && (
         <ul className="flex flex-wrap gap-2">
           {datos.map((d) => <li key={d} className="rounded-full bg-panel px-3 py-1 text-sm font-semibold">{d}</li>)}
@@ -135,7 +137,7 @@ export default function PerfilPublico({ id, userId, onVolver }) {
           </form>
         )}
         {comentarios.length === 0 ? (
-          <p className="text-tinta/70">Todavía no hay comentarios.</p>
+          <p className="text-tinta/70">{esMio ? "Todavía nadie te dejó comentarios." : "Todavía no hay comentarios."}</p>
         ) : (
           <ul className="space-y-2">
             {comentarios.map((c) => (

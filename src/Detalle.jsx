@@ -17,7 +17,8 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
   const [p, setP] = useState(null);
   const [nueva, setNueva] = useState({ fecha: "", hora: "" });
   const [aviso, setAviso] = useState("");
-  const [amigosIds, setAmigosIds] = useState(new Set());
+  const [amigos, setAmigos] = useState([]);
+  const [invitados, setInvitados] = useState(new Set());
 
   const cargar = async () => {
     const { data } = await supabase
@@ -30,10 +31,17 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
   };
   useEffect(() => { cargar(); }, [id]);
   useEffect(() => {
-    supabase.from("amistades").select("solicitante_id, destinatario_id").eq("estado", "aceptada").then(({ data }) => {
-      setAmigosIds(new Set((data ?? []).map((a) => (a.solicitante_id === userId ? a.destinatario_id : a.solicitante_id))));
-    });
+    supabase.from("amistades")
+      .select("solicitante_id, solicitante:profiles!solicitante_id(id, apodo, avatar_url), destinatario:profiles!destinatario_id(id, apodo, avatar_url)")
+      .eq("estado", "aceptada").then(({ data }) => {
+        setAmigos((data ?? []).map((a) => (a.solicitante_id === userId ? a.destinatario : a.solicitante)).filter(Boolean));
+      });
   }, [userId]);
+  useEffect(() => {
+    supabase.from("invitaciones").select("para_id").eq("partido_id", id).eq("de_id", userId)
+      .then(({ data }) => setInvitados(new Set((data ?? []).map((x) => x.para_id))));
+  }, [id, userId]);
+  const amigosIds = new Set(amigos.map((a) => a.id));
   if (!p) return <Cargando texto="Cargando partido…" />;
 
   const ins = p.inscripciones;
@@ -69,6 +77,13 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
     onVolver();
   }
 
+  const disponibles = amigos.filter((a) => !ins.some((i) => i.usuario_id === a.id));
+  async function invitar(uid) {
+    const { error } = await supabase.from("invitaciones").insert({ partido_id: p.id, de_id: userId, para_id: uid });
+    if (error && error.code !== "23505") return setAviso("No se pudo enviar la invitación.");
+    setAviso("");
+    setInvitados(new Set([...invitados, uid]));
+  }
   const wa = (texto) => `https://wa.me/?text=${encodeURIComponent(texto)}`;
   async function definirFecha() {
     await supabase.from("partidos").update({ fecha: nueva.fecha, hora: nueva.hora, a_coordinar: false }).eq("id", p.id);
@@ -140,6 +155,23 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
         <section>
           <h3 className="mb-2 font-extrabold">Suplentes</h3>
           <ol className="space-y-1">{suplentes.map((i, k) => <Fila key={i.id} i={i} n={k + 1} />)}</ol>
+        </section>
+      )}
+
+      {disponibles.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="font-extrabold">Invitar amigos</h3>
+          <ul className="space-y-1">
+            {disponibles.map((a) => (
+              <li key={a.id} className="flex items-center gap-2 rounded-lg bg-panel px-3 py-2">
+                <Avatar perfil={a} size={28} />
+                <span className="min-w-0 flex-1 truncate">{a.apodo}</span>
+                {invitados.has(a.id)
+                  ? <span className="px-2 text-sm font-semibold text-cesped">Invitado</span>
+                  : <button onClick={() => invitar(a.id)} className={`${btn} min-h-9 bg-pasto px-3 py-1 text-sm text-white`}>Invitar</button>}
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

@@ -7,6 +7,7 @@ import Detalle from "./Detalle";
 import Perfil from "./Perfil";
 import PerfilPublico from "./PerfilPublico";
 import Amigos from "./Amigos";
+import Invitaciones from "./Invitaciones";
 import { Cargando, Logo } from "./ui";
 import Menu from "./Menu";
 
@@ -21,6 +22,8 @@ export default function App() {
   const [menu, setMenu] = useState(false);
   const [verAmigos, setVerAmigos] = useState(false);
   const [pendientes, setPendientes] = useState(0);
+  const [verInvitaciones, setVerInvitaciones] = useState(false);
+  const [invitPend, setInvitPend] = useState(0);
 
   const cargarPerfil = async (uid) => {
     const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
@@ -29,9 +32,12 @@ export default function App() {
 
   const cargarPendientes = async (uid = sesion?.user.id) => {
     if (!uid) return;
-    const { count } = await supabase.from("amistades").select("id", { count: "exact", head: true })
-      .eq("destinatario_id", uid).eq("estado", "pendiente");
-    setPendientes(count ?? 0);
+    const [a, b] = await Promise.all([
+      supabase.from("amistades").select("id", { count: "exact", head: true }).eq("destinatario_id", uid).eq("estado", "pendiente"),
+      supabase.from("invitaciones").select("id", { count: "exact", head: true }).eq("para_id", uid).eq("estado", "pendiente"),
+    ]);
+    setPendientes(a.count ?? 0);
+    setInvitPend(b.count ?? 0);
   };
 
   useEffect(() => {
@@ -56,7 +62,9 @@ export default function App() {
   if (sesion === undefined) return <Cargando />;
   if (!sesion) return <Auth onPerfilActualizado={() => supabase.auth.getUser().then(({ data }) => cargarPerfil(data.user.id))} />;
 
-  const inicio = () => { setComunidad(null); setPartidoId(null); setPerfilId(null); setVerPerfil(false); setVerAmigos(false); };
+  const limpiar = () => { setPerfilId(null); setVerPerfil(false); setVerAmigos(false); setVerInvitaciones(false); };
+  const inicio = () => { limpiar(); setComunidad(null); setPartidoId(null); };
+  const totalPend = pendientes + invitPend;
 
   return (
     <div className="mx-auto max-w-xl space-y-5 p-4 pb-10 sm:space-y-6 sm:p-5">
@@ -64,8 +72,9 @@ export default function App() {
         <h1 className="text-2xl font-extrabold sm:text-3xl">
           <button onClick={inicio} aria-label="DOPARTI, ir al inicio" className="rounded-lg"><Logo /></button>
         </h1>
-        <button onClick={() => { cargarPendientes(); setMenu(true); }} aria-label="Abrir menú" aria-expanded={menu} aria-controls="menu"
-          className="-mr-2 grid size-11 place-items-center rounded-lg">
+        <button onClick={() => { cargarPendientes(); setMenu(true); }} aria-label={`Abrir menú${totalPend ? `, ${totalPend} pendientes` : ""}`} aria-expanded={menu} aria-controls="menu"
+          className="relative -mr-2 grid size-11 place-items-center rounded-lg">
+          {totalPend > 0 && <span aria-hidden="true" className="absolute right-1.5 top-1.5 size-3 rounded-full bg-naranja ring-2 ring-fondo" />}
           <svg width="22" height="18" viewBox="0 0 22 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <path d="M2 3h18M8 9h12M2 15h18" />
           </svg>
@@ -76,23 +85,27 @@ export default function App() {
         <Perfil perfil={perfil} onCerrar={() => setVerPerfil(false)}
           onGuardado={() => { cargarPerfil(sesion.user.id); setVerPerfil(false); }} />
       ) : perfilId ? (
-        <PerfilPublico id={perfilId} userId={sesion.user.id} onVolver={() => setPerfilId(null)} />
+        <PerfilPublico id={perfilId} userId={sesion.user.id} onVolver={() => setPerfilId(null)} onEditar={() => setVerPerfil(true)} />
       ) : verAmigos ? (
         <Amigos userId={sesion.user.id} onVolver={() => setVerAmigos(false)} onVerPerfil={setPerfilId} onCambio={cargarPendientes} />
+      ) : verInvitaciones ? (
+        <Invitaciones onVolver={() => setVerInvitaciones(false)} onCambio={cargarPendientes}
+          onAbrirPartido={(id) => { setVerInvitaciones(false); setPartidoId(id); }} />
       ) : partidoId ? (
         <Detalle id={partidoId} userId={sesion.user.id} onVolver={() => setPartidoId(null)} onVerPerfil={setPerfilId} />
       ) : comunidad ? (
         <Comunidad comunidad={comunidad} userId={sesion.user.id} onCambio={setComunidad} onVolver={() => setComunidad(null)}
           onAbrirPartido={setPartidoId} onVerPerfil={setPerfilId} />
       ) : (
-        <Comunidades onAbrir={setComunidad} />
+        <Comunidades onAbrir={setComunidad} userId={sesion.user.id} onAbrirPartido={setPartidoId} />
       )}
 
       <Menu abierto={menu} onCerrar={() => setMenu(false)} perfil={perfil}
         items={[
           { texto: "Mis comunidades", onClick: inicio },
-          { texto: "Amigos", insignia: pendientes, onClick: () => { setPerfilId(null); setVerPerfil(false); setVerAmigos(true); } },
-          { texto: "Mi perfil", onClick: () => { setPerfilId(null); setVerAmigos(false); setVerPerfil(true); } },
+          { texto: "Mi perfil", onClick: () => { limpiar(); setPerfilId(sesion.user.id); } },
+          { texto: "Amigos", insignia: pendientes, onClick: () => { limpiar(); setVerAmigos(true); } },
+          { texto: "Invitaciones", insignia: invitPend, onClick: () => { limpiar(); setVerInvitaciones(true); } },
           { texto: "Salir", onClick: () => supabase.auth.signOut(), peligro: true },
         ]} />
     </div>
