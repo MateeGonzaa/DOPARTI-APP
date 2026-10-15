@@ -1,4 +1,4 @@
-// Centro por defecto: Río Cuarto, Córdoba. Cambialo cuando la app sume otras zonas.
+
 export const CENTRO = { lat: -33.1307, lng: -64.3499 };
 
 let promesa;

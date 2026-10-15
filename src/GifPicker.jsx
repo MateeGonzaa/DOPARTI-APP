@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { input } from "./ui";
 
-// Clave de GIPHY (developers.giphy.com). Va en .env como VITE_GIPHY_KEY.
+
 const KEY_PROPIA = import.meta.env.VITE_GIPHY_KEY;
-const KEY = KEY_PROPIA || "dc6zaTOxFJmzC"; // clave pública de prueba de GIPHY: sirve para desarrollar, no para producción
+const KEY = KEY_PROPIA || "dc6zaTOxFJmzC"; 
 
 const BASE = "https://api.giphy.com/v1/gifs";
-const cache = new Map(); // la clave beta permite pocas consultas por hora: no repetimos las mismas
+const cache = new Map(); 
 
 const aItem = (g) => ({
   id: g.id,

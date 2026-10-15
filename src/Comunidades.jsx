@@ -33,7 +33,7 @@ export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
       .select("partidos(id, deporte, tipo, fecha, hora, a_coordinar, sede, comunidades(nombre))")
       .eq("usuario_id", userId)
       .then(({ data }) => {
-        const desde = Date.now() - 3 * 3600 * 1000; // un partido sigue "próximo" hasta 3 horas después de empezar
+        const desde = Date.now() - 3 * 3600 * 1000; 
         const sinFecha = (p) => p.a_coordinar || !p.fecha || !p.hora;
         const t = (p) => (sinFecha(p) ? Infinity : new Date(`${p.fecha}T${p.hora}`).getTime());
         const lista = (data ?? []).map((d) => d.partidos).filter(Boolean)

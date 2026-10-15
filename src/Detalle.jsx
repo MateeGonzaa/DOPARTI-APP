@@ -94,7 +94,7 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
     await supabase.from("partidos").update({ fecha: nueva.fecha, hora: nueva.hora, a_coordinar: false }).eq("id", p.id);
     cargar();
   }
-  // WhatsApp no deja elegir un grupo desde un link: copiamos el mensaje y abrimos el grupo para pegarlo.
+
   function compartir(texto) {
     const grupo = p.comunidades?.whatsapp_link;
     if (!grupo) return window.open(wa(texto), "_blank", "noopener");

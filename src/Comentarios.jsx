@@ -21,7 +21,7 @@ function Texto({ t }) {
   );
 }
 
-// Comentarios de un perfil, con respuestas, "me gusta", emojis y GIFs.
+
 export default function Comentarios({ perfilId, apodo, userId, esMio, onVerPerfil }) {
   const [items, setItems] = useState(null);
   const [respondiendo, setRespondiendo] = useState(null);
@@ -40,7 +40,7 @@ export default function Comentarios({ perfilId, apodo, userId, esMio, onVerPerfi
   };
   useEffect(() => { cargar(); }, [perfilId]);
 
-  // padre = id del comentario raíz (las respuestas a respuestas quedan en el mismo hilo, con @mención)
+
   const publicar = (padre) => async ({ texto, gif_url }) => {
     setAviso("");
     const { error } = await supabase.from("perfil_comentarios").insert({

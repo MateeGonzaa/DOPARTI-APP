@@ -9,7 +9,6 @@ const ACCION = {
   like: "le dio ❤️ a tu comentario",
 };
 
-// Avisos de comentarios, respuestas y "me gusta".
 export default function Actividad({ userId, onVolver, onVerPerfil, onCambio }) {
   const [lista, setLista] = useState(null);
 

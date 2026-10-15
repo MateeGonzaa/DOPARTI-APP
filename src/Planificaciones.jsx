@@ -9,7 +9,7 @@ const VACIA = { dia_semana: 4, hora: "21:00", deporte: "futbol", tipo: 7, sede: 
 const pad = (n) => String(n).padStart(2, "0");
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-// Próxima fecha (a partir de ahora) en que cae ese día de la semana a esa hora.
+
 function proxima(dia, hora) {
   const [h, m] = hora.split(":").map(Number);
   const ahora = new Date();

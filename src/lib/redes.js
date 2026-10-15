@@ -1,5 +1,3 @@
-// Redes sociales del perfil. Se guarda solo el usuario (o el número), nunca un link libre,
-// y el link se arma acá: así nadie puede meter una URL rara en un perfil.
 export const REDES = {
   instagram: { nombre: "Instagram", ejemplo: "usuario o link de tu perfil" },
   whatsapp: { nombre: "WhatsApp", ejemplo: "Con código de país: 5491155551234" },
@@ -13,7 +11,7 @@ const USUARIO = {
   twitter: /^[A-Za-z0-9_]{1,15}$/,
 };
 
-// Acepta "@usuario", "usuario" o el link completo. Devuelve { ok, valor }.
+
 export function normalizarRed(tipo, texto) {
   const t = (texto ?? "").trim();
   if (!t) return { ok: true, valor: null };

@@ -4,7 +4,6 @@ import { btn, Avatar, Cargando } from "./ui";
 import { cupo, cuando, esProximo, instante } from "./lib/logica";
 import { etiqueta, cap } from "./lib/modalidades";
 
-// Ventana para invitar a un amigo puntual a uno de tus próximos partidos.
 export default function InvitarAPartido({ amigo, userId, onCerrar }) {
   const [lista, setLista] = useState(null);
   const [invitados, setInvitados] = useState(new Set());

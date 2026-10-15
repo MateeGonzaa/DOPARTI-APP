@@ -1,5 +1,3 @@
-// Deportes y modalidades que puede usar cada comunidad.
-// En la base, `tipo` = jugadores por equipo (el cupo del partido es tipo * 2).
 export const DEPORTES_COM = {
   futbol: { nombre: "Fútbol", emoji: "⚽", preset: [5, 7, 11], formato: (t) => `Fútbol ${t}` },
   basket: { nombre: "Básquet", emoji: "🏀", preset: [3, 5], formato: (t) => `Básquet ${t}x${t}` },
@@ -8,7 +6,7 @@ export const DEPORTES_COM = {
 };
 export const ORDEN = Object.keys(DEPORTES_COM);
 
-// Config efectiva de una comunidad: deportes activos y modalidades de cada uno.
+
 export function configDe(c) {
   const activos = (c?.deportes ?? []).filter((d) => DEPORTES_COM[d]);
   const deportes = activos.length ? ORDEN.filter((d) => activos.includes(d)) : ["futbol"];

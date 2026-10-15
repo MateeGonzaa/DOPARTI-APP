@@ -1,4 +1,3 @@
-// "tipo" de un partido = jugadores por equipo. El cupo total es tipo * 2.
 export const DEPORTES = {
   futbol: {
     nombre: "Fútbol", emoji: "⚽", formatos: [5, 7, 11], defecto: 7,
@@ -39,7 +38,7 @@ export const PIES = [["diestro", "Diestro"], ["zurdo", "Zurdo"], ["ambidiestro",
 export const MANOS = [["diestro", "Diestra"], ["zurdo", "Zurda"], ["ambidiestro", "Ambidiestra"], ["ninguno", "Ninguna, manos de manteca 🧈"]];
 export const etiqueta = (lista, v) => lista.find(([k]) => k === v)?.[1];
 
-// Estado inicial del formulario de jugador (registro y edición de perfil)
+
 export const estadoJugador = (perfil) => ({
   edad: perfil?.edad ?? "",
   genero: perfil?.genero ?? "prefiero_no_decir",
@@ -49,7 +48,7 @@ export const estadoJugador = (perfil) => ({
   posiciones: perfil?.posiciones ?? (perfil?.posicion ? { futbol: perfil.posicion } : {}),
 });
 
-// Campos listos para guardar en profiles
+
 export const camposParaGuardar = (f) => ({
   edad: f.edad === "" ? null : Number(f.edad),
   genero: f.genero,

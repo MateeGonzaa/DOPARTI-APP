@@ -16,7 +16,7 @@ export const cuando = (p) =>
         weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
       });
 
-// Partidos sin fecha definida cuentan como próximos; los demás hasta 3 horas después de empezar.
+
 export const sinFecha = (p) => p.a_coordinar || !p.fecha || !p.hora;
 export const instante = (p) => (sinFecha(p) ? Infinity : new Date(`${p.fecha}T${p.hora}`).getTime());
 export const esProximo = (p) => instante(p) >= Date.now() - 3 * 3600 * 1000;

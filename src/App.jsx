@@ -51,7 +51,7 @@ export default function App() {
     return () => data.subscription.unsubscribe();
   }, []);
 
-  // Al iniciar sesión: cargar perfil y, si venía con link de invitación, unirse.
+
   useEffect(() => {
     if (!sesion) { setPerfil(null); setListo(false); return; }
     cargarPerfil(sesion.user.id);

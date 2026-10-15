@@ -1,12 +1,12 @@
 import { btn, input } from "./ui";
 import { DEPORTES, LISTA, GENEROS, PIES, MANOS } from "./lib/deportes";
 
-// Edad, género, deportes que te gustan, pie/mano hábil y posición por deporte.
+
 export default function CamposJugador({ f, setF }) {
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const alternar = (d) => {
     const esta = f.deportes.includes(d);
-    if (esta && f.deportes.length === 1) return; // al menos un deporte
+    if (esta && f.deportes.length === 1) return; 
     setF({ ...f, deportes: esta ? f.deportes.filter((x) => x !== d) : [...f.deportes, d] });
   };
   const usaPie = f.deportes.includes("futbol");

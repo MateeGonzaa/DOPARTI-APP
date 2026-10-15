@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { cargarMaps, CENTRO } from "./lib/maps";
 import { input } from "./ui";
 
-// Buscador de lugares de Google. Si Maps no carga, deja escribir el nombre a mano.
+
 export default function SelectorLugar({ onElegir, centro = CENTRO }) {
   const caja = useRef(null);
   const [manual, setManual] = useState(false);

@@ -59,7 +59,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
     setErrorPartido("");
     const { a_coordinar, ...base } = f;
     const datos = { ...base, sede: f.sede.trim(), sede_direccion: f.sede_direccion.trim(), comunidad_id: comunidad.id };
-    // a_coordinar solo se manda cuando se usa, así los partidos con fecha no dependen de esa columna.
+
     if (a_coordinar) Object.assign(datos, { a_coordinar: true, fecha: null, hora: null });
     const { data, error } = await supabase.from("partidos").insert(datos).select().single();
     if (error) return setErrorPartido(`No se pudo crear el partido: ${error.message}`);

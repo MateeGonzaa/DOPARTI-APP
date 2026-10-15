@@ -10,7 +10,7 @@ export const linkWhatsApp = (v) => {
   return n ? `https://wa.me/${n}` : null
 }
 
-// Link libre: solo acepta http/https (evita "javascript:" y similares)
+
 export function linkPersonal(v) {
   if (!v?.trim()) return null
   const url = /^https?:\/\//i.test(v.trim()) ? v.trim() : `https://${v.trim()}`

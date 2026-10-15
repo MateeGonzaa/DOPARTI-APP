@@ -9,11 +9,11 @@ const guardarReciente = (e) => {
   try { localStorage.setItem(RECIENTES, JSON.stringify([e, ...leerRecientes().filter((x) => x !== e)].slice(0, 16))); } catch { /* sin almacenamiento */ }
 };
 
-// Caja para escribir un comentario o una respuesta, con emojis y GIFs.
+
 export default function Compositor({ placeholder, boton = "Comentar", inicial = "", autoFocus, onEnviar, onCancelar, max = 300 }) {
   const [texto, setTexto] = useState(inicial);
   const [gif, setGif] = useState(null);
-  const [panel, setPanel] = useState(null); // "emoji" | "gif" | null
+  const [panel, setPanel] = useState(null); 
   const [cat, setCat] = useState(() => (leerRecientes().length ? "recientes" : "caras"));
   const [recientes, setRecientes] = useState(leerRecientes);
   const [enviando, setEnviando] = useState(false);
