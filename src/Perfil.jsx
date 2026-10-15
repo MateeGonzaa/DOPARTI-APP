@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { supabase } from "./lib/supabase";
-import { btn, input, Avatar, POSICIONES, PIES } from "./ui";
+import { btn, input, Avatar } from "./ui";
+import CamposJugador from "./CamposJugador";
+import { GENEROS, MANOS } from "./lib/deportes";
 
 export default function Perfil({ perfil, onCerrar, onGuardado }) {
   const [f, setF] = useState({
@@ -8,7 +10,10 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
     apodo: perfil?.apodo ?? "",
     edad: perfil?.edad ?? "",
     pie: perfil?.pie ?? "diestro",
-    posicion: perfil?.posicion ?? "Mediocampista",
+    genero: perfil?.genero ?? GENEROS[0][0],
+    deportes: perfil?.deportes?.length ? perfil.deportes : ["futbol"],
+    mano: perfil?.mano ?? MANOS[0][0],
+    posiciones: perfil?.posiciones ?? (perfil?.posicion ? { futbol: perfil.posicion } : {}),
     password: "",
   });
   const [foto, setFoto] = useState(null);
@@ -25,7 +30,11 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
       apodo: f.apodo.trim(),
       edad: f.edad === "" ? null : Number(f.edad),
       pie: f.pie,
-      posicion: f.posicion,
+      genero: f.genero,
+      deportes: f.deportes,
+      mano: f.mano,
+      posiciones: f.posiciones,
+      posicion: f.posiciones.futbol ?? null,
     };
     if (foto) {
       const ruta = `${perfil.id}/avatar`;
@@ -60,21 +69,7 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
       <label className="block text-sm font-semibold">Apodo
         <input className={input} required value={f.apodo} onChange={set("apodo")} />
       </label>
-      <label className="block text-sm font-semibold">Edad
-        <input className={input} type="number" inputMode="numeric" min={8} max={90} value={f.edad} onChange={set("edad")} />
-      </label>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block text-sm font-semibold">Pie hábil
-          <select className={input} value={f.pie} onChange={set("pie")}>
-            {PIES.map(([k, t]) => <option key={k} value={k}>{t}</option>)}
-          </select>
-        </label>
-        <label className="block text-sm font-semibold">Posición preferida
-          <select className={input} value={f.posicion} onChange={set("posicion")}>
-            {POSICIONES.map((p) => <option key={p}>{p}</option>)}
-          </select>
-        </label>
-      </div>
+      <CamposJugador f={f} setF={setF} />
       <label className="block text-sm font-semibold">Nueva contraseña (opcional)
         <input className={input} type="password" minLength={6} placeholder="Dejala vacía para no cambiarla" value={f.password} onChange={set("password")} />
       </label>

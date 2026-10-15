@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input, Avatar } from "./ui";
 import { cupo, cuando } from "./lib/logica";
+import SelectorLugar from "./SelectorLugar";
+import Planificaciones from "./Planificaciones";
 
 const TIPOS = [5, 7, 11];
-const SEDE_VACIA = { nombre: "", direccion: "" };
+const SEDE_VACIA = { nombre: "", direccion: "", lat: null, lng: null };
 
 export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbrirPartido, onVerPerfil }) {
   const [tab, setTab] = useState("partidos");
@@ -13,7 +15,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
   const [miembros, setMiembros] = useState([]);
   const [filtro, setFiltro] = useState("todos");
   const [creando, setCreando] = useState(false);
-  const [f, setF] = useState({ tipo: 7, fecha: "", hora: "", sede: "", sede_direccion: "", a_coordinar: false });
+  const [f, setF] = useState({ tipo: 7, fecha: "", hora: "", sede: "", sede_direccion: "", sede_lat: null, sede_lng: null, a_coordinar: false });
   const [sede, setSede] = useState(SEDE_VACIA);
   const [copiado, setCopiado] = useState(false);
   const [esAdmin, setEsAdmin] = useState(false);
@@ -55,7 +57,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
     onAbrirPartido(data.id);
   };
   const agregarSede = async () => {
-    await supabase.from("sedes").insert({ nombre: sede.nombre.trim(), direccion: sede.direccion.trim(), comunidad_id: comunidad.id });
+    await supabase.from("sedes").insert({ nombre: sede.nombre.trim(), direccion: sede.direccion.trim(), lat: sede.lat, lng: sede.lng, comunidad_id: comunidad.id });
     setSede(SEDE_VACIA);
     cargar();
   };
@@ -83,6 +85,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
   };
   const visibles = partidos.filter((p) => filtro === "todos" || p.tipo === filtro);
   const setCampo = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const centro = comunidad.zonas?.lat != null ? { lat: comunidad.zonas.lat, lng: comunidad.zonas.lng } : undefined;
 
   return (
     <div className="space-y-5">
@@ -95,7 +98,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
         )}
       </div>
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-        {[["partidos", "Partidos"], ["sedes", "Sedes"], ["miembros", "Miembros"], ["invitar", "Invitar"], ...(esAdmin ? [["ajustes", "Ajustes"]] : [])].map(([k, t]) => (
+        {[["partidos", "Partidos"], ["plan", "Planificación"], ["sedes", "Sedes"], ["miembros", "Miembros"], ["invitar", "Invitar"], ...(esAdmin ? [["ajustes", "Ajustes"]] : [])].map(([k, t]) => (
           <button key={k} onClick={() => setTab(k)} className={`${btn} shrink-0 py-1 ${tab === k ? "bg-tinta text-fondo" : "bg-panel"}`}>{t}</button>
         ))}
       </div>
@@ -123,12 +126,15 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
               <div className="flex flex-wrap gap-2">
                 {sedes.map((s) => (
                   <button key={s.id} type="button"
-                    onClick={() => setF({ ...f, sede: s.nombre, sede_direccion: s.direccion ?? "" })}
+                    onClick={() => setF({ ...f, sede: s.nombre, sede_direccion: s.direccion ?? "", sede_lat: s.lat ?? null, sede_lng: s.lng ?? null })}
                     className={`${btn} py-1 text-sm ${f.sede === s.nombre ? "bg-pasto text-white" : "bg-panel-alto"}`}>{s.nombre}</button>
                 ))}
               </div>
             )}
-            <input className={input} placeholder="Nombre de la cancha" value={f.sede} onChange={setCampo("sede")} />
+            <SelectorLugar centro={centro}
+              onElegir={(l) => setF((x) => ({ ...x, sede: l.nombre, sede_direccion: l.direccion, sede_lat: l.lat, sede_lng: l.lng }))} />
+            <input className={input} placeholder="Nombre de la cancha" value={f.sede}
+              onChange={(e) => setF({ ...f, sede: e.target.value, sede_lat: null, sede_lng: null })} />
             <input className={input} placeholder="Dirección (opcional)" value={f.sede_direccion} onChange={setCampo("sede_direccion")} />
           </div>
           {errorPartido && <p role="alert" className="text-sm font-semibold text-brasa">{errorPartido}</p>}
@@ -161,7 +167,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
                       <span className="font-display text-lg tabular-nums text-cesped">{Math.min(p.inscripciones[0].count, cupo(p))}/{cupo(p)}</span>
                     </div>
                     <p className="capitalize">{cuando(p)}</p>
-                    <p className="text-sm text-tinta/70">{p.sede}</p>
+                    <p className="text-sm text-tinta/70">{p.sede}{p.abierto && " · Abierto a otras comunidades"}</p>
                   </button>
                 </li>
               ))}
@@ -169,6 +175,8 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
           )}
         </>
       ))}
+
+      {tab === "plan" && <Planificaciones comunidad={comunidad} esAdmin={esAdmin} sedes={sedes} onAbrirPartido={onAbrirPartido} />}
 
       {tab === "sedes" && (
         <div className="space-y-4">
@@ -183,7 +191,9 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
           </ul>
           {esAdmin && (
             <div className="space-y-2">
-              <input className={input} placeholder="Nombre de la cancha" value={sede.nombre} onChange={(e) => setSede({ ...sede, nombre: e.target.value })} />
+              <SelectorLugar key={sedes.length} centro={centro}
+                onElegir={(l) => setSede((x) => ({ ...x, nombre: l.nombre, direccion: l.direccion, lat: l.lat, lng: l.lng }))} />
+              <input className={input} placeholder="Nombre de la cancha" value={sede.nombre} onChange={(e) => setSede({ ...sede, nombre: e.target.value, lat: null, lng: null })} />
               <input className={input} placeholder="Dirección (opcional)" value={sede.direccion} onChange={(e) => setSede({ ...sede, direccion: e.target.value })} />
               <button disabled={!sede.nombre.trim()} onClick={agregarSede} className={`${btn} bg-pasto text-white disabled:opacity-40`}>Guardar sede</button>
             </div>

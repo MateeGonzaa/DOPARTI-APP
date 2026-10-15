@@ -51,12 +51,19 @@ export default function App() {
     if (!sesion) { setPerfil(null); setListo(false); return; }
     cargarPerfil(sesion.user.id);
     cargarPendientes(sesion.user.id);
-    const codigo = new URLSearchParams(location.search).get("invitacion");
-    if (!codigo) return setListo(true);
-    supabase.rpc("unirse_a_comunidad", { p_codigo: codigo }).then(() => {
+    const qs = new URLSearchParams(location.search);
+    const codigo = qs.get("invitacion");
+    const codPartido = qs.get("partido");
+    if (!codigo && !codPartido) return setListo(true);
+    (async () => {
+      if (codigo) await supabase.rpc("unirse_a_comunidad", { p_codigo: codigo });
+      if (codPartido) {
+        const { data } = await supabase.rpc("abrir_partido_por_codigo", { p_codigo: codPartido });
+        if (data) setPartidoId(data);
+      }
       history.replaceState(null, "", location.pathname);
       setListo(true);
-    });
+    })();
   }, [sesion]);
 
   if (sesion === undefined) return <Cargando />;

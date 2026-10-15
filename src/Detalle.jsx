@@ -3,6 +3,7 @@ import { supabase } from "./lib/supabase";
 import { btn, input, Avatar, Cargando } from "./ui";
 import { cupo, cuando, sortear } from "./lib/logica";
 import { convocatoria, equiposMsg, faltanMsg } from "./lib/mensajes";
+import Mapa from "./Mapa";
 
 function Equipo({ nombre, color, ids, quien }) {
   return (
@@ -19,6 +20,7 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
   const [aviso, setAviso] = useState("");
   const [amigos, setAmigos] = useState([]);
   const [invitados, setInvitados] = useState(new Set());
+  const [copiado, setCopiado] = useState(false);
 
   const cargar = async () => {
     const { data } = await supabase
@@ -50,7 +52,7 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
   const completo = titulares.length === cupo(p);
   const yo = ins.find((i) => i.usuario_id === userId);
   const quien = (uid) => ins.find((i) => i.usuario_id === uid)?.profiles;
-  const guardarEquipos = (equipos) => supabase.from("partidos").update({ equipos }).eq("id", p.id);
+  const guardarEquipos = (equipos) => supabase.rpc("guardar_equipos", { p_partido: p.id, p_equipos: equipos });
 
   async function anotarme() {
     await supabase.from("inscripciones").insert({ partido_id: p.id });
@@ -63,12 +65,13 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
   // Si se baja un titular, entra el primer suplente en su mismo equipo.
   async function bajarme() {
     const idx = ins.findIndex((i) => i.usuario_id === userId);
-    await supabase.from("inscripciones").delete().eq("id", yo.id);
+    // Primero se actualizan los equipos (todavía estoy anotado) y después me borro.
     if (p.equipos && idx < cupo(p)) {
       const sup = ins[cupo(p)];
       const cambiar = (l) => l.map((x) => (x === userId ? sup.usuario_id : x));
       await guardarEquipos(sup ? { A: cambiar(p.equipos.A), B: cambiar(p.equipos.B) } : null);
     }
+    await supabase.from("inscripciones").delete().eq("id", yo.id);
     cargar();
   }
 
@@ -99,6 +102,9 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
     window.open(grupo, "_blank", "noopener");
   }
   const nombre = (uid) => quien(uid)?.apodo ?? "?";
+  const linkPartido = p.codigo ? `${location.origin}/?partido=${p.codigo}` : "";
+  const copiarLink = async () => { try { await navigator.clipboard.writeText(linkPartido); setCopiado(true); } catch { /* sin permiso */ } };
+  const alternarAbierto = async () => { await supabase.from("partidos").update({ abierto: !p.abierto }).eq("id", p.id); setCopiado(false); cargar(); };
   const Fila = ({ i, n }) => (
     <li>
       <button onClick={() => onVerPerfil(i.usuario_id)} className="flex w-full items-center gap-2 rounded-lg bg-panel px-3 py-2 text-left hover:bg-panel-alto">
@@ -116,6 +122,14 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
         <p className="capitalize">{cuando(p)}</p>
         <p>{p.sede}{p.sede_direccion && ` — ${p.sede_direccion}`}</p>
       </header>
+
+      {p.sede_lat != null && (
+        <div className="space-y-2">
+          <Mapa lat={p.sede_lat} lng={p.sede_lng} nombre={p.sede} />
+          <a target="_blank" rel="noreferrer" className="text-sm font-semibold text-cesped"
+            href={`https://www.google.com/maps/search/?api=1&query=${p.sede_lat},${p.sede_lng}`}>Cómo llegar</a>
+        </div>
+      )}
 
       {p.a_coordinar && p.creado_por === userId && (
         <div className="space-y-2 rounded-2xl bg-panel p-4">
@@ -187,6 +201,30 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
             <Equipo nombre="Pechera naranja" color="bg-naranja" ids={p.equipos.A} quien={quien} />
             <Equipo nombre="Pechera celeste" color="bg-celeste" ids={p.equipos.B} quien={quien} />
           </div>
+        </section>
+      )}
+
+      {(p.abierto || p.creado_por === userId) && (
+        <section className="space-y-3 rounded-2xl bg-panel p-4">
+          <h3 className="font-extrabold">Partido entre comunidades</h3>
+          {p.abierto ? (
+            <>
+              <p className="text-sm text-tinta/70">Cualquiera con este link y una cuenta puede ver el partido y anotarse, sea de tu comunidad o de otra.</p>
+              <input readOnly className={input} value={linkPartido} onFocus={(e) => e.target.select()} />
+              <div className="flex flex-wrap gap-2">
+                <button onClick={copiarLink} className={`${btn} bg-pasto text-white`}>{copiado ? "Link copiado" : "Copiar link"}</button>
+                <a target="_blank" rel="noreferrer" className={`${btn} bg-panel-alto`}
+                  href={wa(`Sumate al partido de Fútbol ${p.tipo} (${cuando(p)}) en DOPARTI: ${linkPartido}`)}>Enviar por WhatsApp</a>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-tinta/70">Ahora lo ven solo tu comunidad y quienes inviten. Abrilo para que otras comunidades se sumen con un link.</p>
+          )}
+          {p.creado_por === userId && (
+            <button onClick={alternarAbierto} className={`${btn} ${p.abierto ? "bg-panel-alto text-brasa" : "bg-pasto text-white"}`}>
+              {p.abierto ? "Cerrar a otras comunidades" : "Abrir a otras comunidades"}
+            </button>
+          )}
         </section>
       )}
 

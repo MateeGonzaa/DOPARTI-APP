@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input, Avatar, Cargando, Nivel, nombrePie } from "./ui";
 import InvitarAPartido from "./InvitarAPartido";
+import { DEPORTES, MANOS } from "./lib/deportes";
 
 export default function PerfilPublico({ id, userId, onVolver, onEditar }) {
   const [perfil, setPerfil] = useState(undefined);
@@ -69,10 +70,15 @@ export default function PerfilPublico({ id, userId, onVolver, onEditar }) {
     );
   }
 
+  const usaFutbol = !perfil.deportes?.length || perfil.deportes.includes("futbol");
+  const mano = MANOS.find(([k]) => k === perfil.mano)?.[1];
   const datos = [
     perfil.edad && `${perfil.edad} años`,
-    nombrePie(perfil.pie),
-    perfil.posicion,
+    ...(perfil.deportes?.length
+      ? perfil.deportes.filter((d) => DEPORTES[d]).map((d) => `${DEPORTES[d].emoji} ${DEPORTES[d].nombre}${perfil.posiciones?.[d] ? ` · ${perfil.posiciones[d]}` : ""}`)
+      : [perfil.posicion]),
+    usaFutbol && nombrePie(perfil.pie),
+    perfil.deportes?.some((d) => d !== "futbol") && mano && `Mano ${mano.toLowerCase()}`,
   ].filter(Boolean);
 
   return (

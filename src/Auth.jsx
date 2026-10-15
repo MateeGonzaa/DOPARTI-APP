@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { supabase } from "./lib/supabase";
-import { btn, input, Logo, POSICIONES, PIES } from "./ui";
+import { btn, input, Logo } from "./ui";
+import CamposJugador from "./CamposJugador";
+import { GENEROS, MANOS } from "./lib/deportes";
 
 export default function Auth({ onPerfilActualizado }) {
   const [registro, setRegistro] = useState(false);
-  const [f, setF] = useState({ nombre: "", apodo: "", edad: "", pie: "diestro", posicion: "Mediocampista", email: "", password: "" });
+  const [f, setF] = useState({ nombre: "", apodo: "", edad: "", genero: GENEROS[0][0], deportes: ["futbol"], pie: "diestro", mano: MANOS[0][0], posiciones: {}, email: "", password: "" });
   const [foto, setFoto] = useState(null);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -23,14 +25,14 @@ export default function Auth({ onPerfilActualizado }) {
     const { data, error } = await supabase.auth.signUp({
       email: f.email,
       password: f.password,
-      options: { data: { nombre_completo: f.nombre, apodo: f.apodo, edad, pie: f.pie, posicion: f.posicion } },
+      options: { data: { nombre_completo: f.nombre, apodo: f.apodo, edad, pie: f.pie, posicion: f.posiciones.futbol ?? null } },
     });
     if (error) { setError(error.message); return setCargando(false); }
     if (!data.session) {
       setError("Te mandamos un email para confirmar la cuenta. Confirmala y después iniciá sesión.");
       return setCargando(false);
     }
-    const cambios = { edad, pie: f.pie, posicion: f.posicion };
+    const cambios = { edad, genero: f.genero, deportes: f.deportes, pie: f.pie, mano: f.mano, posiciones: f.posiciones, posicion: f.posiciones.futbol ?? null };
     if (foto) {
       const ruta = `${data.user.id}/avatar`;
       const up = await supabase.storage.from("avatars").upload(ruta, foto, { upsert: true, contentType: foto.type });
@@ -48,19 +50,7 @@ export default function Auth({ onPerfilActualizado }) {
         <>
           <input className={input} placeholder="Nombre completo" required value={f.nombre} onChange={set("nombre")} />
           <input className={input} placeholder="Apodo" required value={f.apodo} onChange={set("apodo")} />
-          <input className={input} type="number" inputMode="numeric" min={8} max={90} placeholder="Edad" required value={f.edad} onChange={set("edad")} />
-          <div className="grid grid-cols-2 gap-3">
-            <label className="text-sm font-semibold">Pie hábil
-              <select className={input} value={f.pie} onChange={set("pie")}>
-                {PIES.map(([k, t]) => <option key={k} value={k}>{t}</option>)}
-              </select>
-            </label>
-            <label className="text-sm font-semibold">Posición
-              <select className={input} value={f.posicion} onChange={set("posicion")}>
-                {POSICIONES.map((p) => <option key={p}>{p}</option>)}
-              </select>
-            </label>
-          </div>
+          <CamposJugador f={f} setF={setF} />
           <label className="block text-sm font-semibold">
             Foto de perfil
             <input type="file" accept="image/*" className="mt-1 block w-full text-sm" onChange={(e) => setFoto(e.target.files[0] ?? null)} />
