@@ -8,6 +8,7 @@ import Perfil from "./Perfil";
 import PerfilPublico from "./PerfilPublico";
 import Amigos from "./Amigos";
 import Invitaciones from "./Invitaciones";
+import Actividad from "./Actividad";
 import { Cargando, Logo } from "./ui";
 import Menu from "./Menu";
 
@@ -24,6 +25,8 @@ export default function App() {
   const [pendientes, setPendientes] = useState(0);
   const [verInvitaciones, setVerInvitaciones] = useState(false);
   const [invitPend, setInvitPend] = useState(0);
+  const [verActividad, setVerActividad] = useState(false);
+  const [actPend, setActPend] = useState(0);
 
   const cargarPerfil = async (uid) => {
     const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
@@ -32,12 +35,14 @@ export default function App() {
 
   const cargarPendientes = async (uid = sesion?.user.id) => {
     if (!uid) return;
-    const [a, b] = await Promise.all([
+    const [a, b, c] = await Promise.all([
       supabase.from("amistades").select("id", { count: "exact", head: true }).eq("destinatario_id", uid).eq("estado", "pendiente"),
       supabase.from("invitaciones").select("id", { count: "exact", head: true }).eq("para_id", uid).eq("estado", "pendiente"),
+      supabase.from("notificaciones").select("id", { count: "exact", head: true }).eq("usuario_id", uid).eq("leida", false),
     ]);
     setPendientes(a.count ?? 0);
     setInvitPend(b.count ?? 0);
+    setActPend(c.count ?? 0);
   };
 
   useEffect(() => {
@@ -69,9 +74,9 @@ export default function App() {
   if (sesion === undefined) return <Cargando />;
   if (!sesion) return <Auth onPerfilActualizado={() => supabase.auth.getUser().then(({ data }) => cargarPerfil(data.user.id))} />;
 
-  const limpiar = () => { setPerfilId(null); setVerPerfil(false); setVerAmigos(false); setVerInvitaciones(false); };
+  const limpiar = () => { setPerfilId(null); setVerPerfil(false); setVerAmigos(false); setVerInvitaciones(false); setVerActividad(false); };
   const inicio = () => { limpiar(); setComunidad(null); setPartidoId(null); };
-  const totalPend = pendientes + invitPend;
+  const totalPend = pendientes + invitPend + actPend;
 
   return (
     <div className="mx-auto max-w-xl space-y-5 p-4 pb-10 sm:space-y-6 sm:p-5">
@@ -92,12 +97,14 @@ export default function App() {
         <Perfil perfil={perfil} onCerrar={() => setVerPerfil(false)}
           onGuardado={() => { cargarPerfil(sesion.user.id); setVerPerfil(false); }} />
       ) : perfilId ? (
-        <PerfilPublico id={perfilId} userId={sesion.user.id} onVolver={() => setPerfilId(null)} onEditar={() => setVerPerfil(true)} />
+        <PerfilPublico id={perfilId} userId={sesion.user.id} onVolver={() => setPerfilId(null)} onEditar={() => setVerPerfil(true)} onVerPerfil={setPerfilId} />
       ) : verAmigos ? (
         <Amigos userId={sesion.user.id} onVolver={() => setVerAmigos(false)} onVerPerfil={setPerfilId} onCambio={cargarPendientes} />
       ) : verInvitaciones ? (
         <Invitaciones userId={sesion.user.id} onVolver={() => setVerInvitaciones(false)} onCambio={cargarPendientes}
           onAbrirPartido={(id) => { setVerInvitaciones(false); setPartidoId(id); }} />
+      ) : verActividad ? (
+        <Actividad userId={sesion.user.id} onVolver={() => setVerActividad(false)} onVerPerfil={setPerfilId} onCambio={cargarPendientes} />
       ) : partidoId ? (
         <Detalle id={partidoId} userId={sesion.user.id} onVolver={() => setPartidoId(null)} onVerPerfil={setPerfilId} />
       ) : comunidad ? (
@@ -113,6 +120,7 @@ export default function App() {
           { texto: "Mi perfil", onClick: () => { limpiar(); setPerfilId(sesion.user.id); } },
           { texto: "Amigos", insignia: pendientes, onClick: () => { limpiar(); setVerAmigos(true); } },
           { texto: "Invitaciones", insignia: invitPend, onClick: () => { limpiar(); setVerInvitaciones(true); } },
+          { texto: "Actividad", insignia: actPend, onClick: () => { limpiar(); setVerActividad(true); } },
           { texto: "Salir", onClick: () => supabase.auth.signOut(), peligro: true },
         ]} />
     </div>

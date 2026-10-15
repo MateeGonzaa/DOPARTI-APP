@@ -2,27 +2,17 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input, Avatar, Cargando, Nivel, nombrePie } from "./ui";
 import InvitarAPartido from "./InvitarAPartido";
+import Comentarios from "./Comentarios";
 import { DEPORTES, MANOS } from "./lib/deportes";
 
-export default function PerfilPublico({ id, userId, onVolver, onEditar }) {
+export default function PerfilPublico({ id, userId, onVolver, onEditar, onVerPerfil }) {
   const [perfil, setPerfil] = useState(undefined);
   const [jugados, setJugados] = useState(0);
-  const [comentarios, setComentarios] = useState([]);
-  const [texto, setTexto] = useState("");
-  const [error, setError] = useState("");
   const [amistad, setAmistad] = useState(undefined);
   const [comunes, setComunes] = useState([]);
   const [invitando, setInvitando] = useState(false);
   const esMio = id === userId;
 
-  const cargarComentarios = async () => {
-    const { data } = await supabase
-      .from("perfil_comentarios")
-      .select("id, texto, created_at, autor_id, autor:profiles!autor_id(apodo, avatar_url)")
-      .eq("perfil_id", id)
-      .order("created_at", { ascending: false });
-    setComentarios(data ?? []);
-  };
 
   const cargarAmistad = async () => {
     if (esMio) return;
@@ -44,21 +34,8 @@ export default function PerfilPublico({ id, userId, onVolver, onEditar }) {
     if (!esMio) supabase.rpc("amigos_en_comun", { p_uid: id }).then(({ data }) => setComunes(data ?? []));
     supabase.from("profiles").select("*").eq("id", id).maybeSingle().then(({ data }) => setPerfil(data ?? null));
     supabase.rpc("partidos_jugados", { p_uid: id }).then(({ data }) => setJugados(data ?? 0));
-    cargarComentarios();
   }, [id]);
 
-  async function comentar(e) {
-    e.preventDefault();
-    setError("");
-    const { error } = await supabase.from("perfil_comentarios").insert({ perfil_id: id, autor_id: userId, texto: texto.trim() });
-    if (error) return setError("No se pudo publicar el comentario.");
-    setTexto("");
-    cargarComentarios();
-  }
-  async function borrar(cid) {
-    await supabase.from("perfil_comentarios").delete().eq("id", cid);
-    cargarComentarios();
-  }
 
   if (perfil === undefined) return <Cargando texto="Cargando perfil…" />;
   if (perfil === null) {
@@ -132,41 +109,7 @@ export default function PerfilPublico({ id, userId, onVolver, onEditar }) {
 
       <Nivel jugados={jugados} />
 
-      <section className="space-y-3">
-        <h3 className="font-extrabold">Comentarios</h3>
-        {!esMio && (
-          <form onSubmit={comentar} className="space-y-2">
-            <textarea className={`${input} min-h-20`} maxLength={300} required placeholder={`Dejale un comentario a ${perfil.apodo}`}
-              value={texto} onChange={(e) => setTexto(e.target.value)} />
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm text-tinta/70">{texto.length}/300</span>
-              <button disabled={!texto.trim()} className={`${btn} bg-pasto text-white disabled:opacity-40`}>Comentar</button>
-            </div>
-            {error && <p className="text-sm font-semibold text-brasa">{error}</p>}
-          </form>
-        )}
-        {comentarios.length === 0 ? (
-          <p className="text-tinta/70">{esMio ? "Todavía nadie te dejó comentarios." : "Todavía no hay comentarios."}</p>
-        ) : (
-          <ul className="space-y-2">
-            {comentarios.map((c) => (
-              <li key={c.id} className="flex gap-3 rounded-lg bg-panel p-3">
-                <Avatar perfil={c.autor} size={36} />
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-baseline justify-between gap-2 text-sm">
-                    <b className="truncate">{c.autor?.apodo ?? "?"}</b>
-                    <span className="shrink-0 text-tinta/60">{new Date(c.created_at).toLocaleDateString("es-AR")}</span>
-                  </p>
-                  <p className="break-words">{c.texto}</p>
-                  {(c.autor_id === userId || esMio) && (
-                    <button onClick={() => borrar(c.id)} className="mt-1 text-sm font-semibold text-brasa">Borrar</button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <Comentarios key={id} perfilId={id} apodo={perfil.apodo} userId={userId} esMio={esMio} onVerPerfil={onVerPerfil} />
       {invitando && <InvitarAPartido amigo={perfil} userId={userId} onCerrar={() => setInvitando(false)} />}
     </div>
   );
