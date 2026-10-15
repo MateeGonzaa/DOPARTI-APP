@@ -11,6 +11,8 @@ import Invitaciones from "./Invitaciones";
 import Actividad from "./Actividad";
 import { Cargando, Logo } from "./ui";
 import Menu from "./Menu";
+import Explorar from "./Explorar";
+import Footer from "./Footer";
 
 export default function App() {
   const [sesion, setSesion] = useState(undefined);
@@ -27,6 +29,7 @@ export default function App() {
   const [invitPend, setInvitPend] = useState(0);
   const [verActividad, setVerActividad] = useState(false);
   const [actPend, setActPend] = useState(0);
+  const [verExplorar, setVerExplorar] = useState(false);
 
   const cargarPerfil = async (uid) => {
     const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
@@ -72,9 +75,14 @@ export default function App() {
   }, [sesion]);
 
   if (sesion === undefined) return <Cargando />;
-  if (!sesion) return <Auth onPerfilActualizado={() => supabase.auth.getUser().then(({ data }) => cargarPerfil(data.user.id))} />;
+  if (!sesion) return (
+    <>
+      <Auth onPerfilActualizado={() => supabase.auth.getUser().then(({ data }) => cargarPerfil(data.user.id))} />
+      <div className="mx-auto max-w-xl px-4 pb-10"><Footer /></div>
+    </>
+  );
 
-  const limpiar = () => { setPerfilId(null); setVerPerfil(false); setVerAmigos(false); setVerInvitaciones(false); setVerActividad(false); };
+  const limpiar = () => { setPerfilId(null); setVerPerfil(false); setVerAmigos(false); setVerInvitaciones(false); setVerActividad(false); setVerExplorar(false); };
   const inicio = () => { limpiar(); setComunidad(null); setPartidoId(null); };
   const totalPend = pendientes + invitPend + actPend;
 
@@ -103,6 +111,8 @@ export default function App() {
       ) : verInvitaciones ? (
         <Invitaciones userId={sesion.user.id} onVolver={() => setVerInvitaciones(false)} onCambio={cargarPendientes}
           onAbrirPartido={(id) => { setVerInvitaciones(false); setPartidoId(id); }} />
+      ) : verExplorar ? (
+        <Explorar onVolver={() => setVerExplorar(false)} onAbrir={(c) => { limpiar(); setPartidoId(null); setComunidad(c); }} onCrear={() => { limpiar(); setComunidad(null); }} />
       ) : verActividad ? (
         <Actividad userId={sesion.user.id} onVolver={() => setVerActividad(false)} onVerPerfil={setPerfilId} onCambio={cargarPendientes} />
       ) : partidoId ? (
@@ -111,18 +121,21 @@ export default function App() {
         <Comunidad comunidad={comunidad} userId={sesion.user.id} onCambio={setComunidad} onVolver={() => setComunidad(null)}
           onAbrirPartido={setPartidoId} onVerPerfil={setPerfilId} />
       ) : (
-        <Comunidades onAbrir={setComunidad} userId={sesion.user.id} onAbrirPartido={setPartidoId} />
+        <Comunidades onAbrir={setComunidad} userId={sesion.user.id} onAbrirPartido={setPartidoId} onExplorar={() => setVerExplorar(true)} />
       )}
 
       <Menu abierto={menu} onCerrar={() => setMenu(false)} perfil={perfil}
         items={[
           { texto: "Mis comunidades", onClick: inicio },
+          { texto: "Explorar comunidades", onClick: () => { limpiar(); setComunidad(null); setPartidoId(null); setVerExplorar(true); } },
           { texto: "Mi perfil", onClick: () => { limpiar(); setPerfilId(sesion.user.id); } },
           { texto: "Amigos", insignia: pendientes, onClick: () => { limpiar(); setVerAmigos(true); } },
           { texto: "Invitaciones", insignia: invitPend, onClick: () => { limpiar(); setVerInvitaciones(true); } },
           { texto: "Actividad", insignia: actPend, onClick: () => { limpiar(); setVerActividad(true); } },
           { texto: "Salir", onClick: () => supabase.auth.signOut(), peligro: true },
         ]} />
+
+      <Footer />
     </div>
   );
 }

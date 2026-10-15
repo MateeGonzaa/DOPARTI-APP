@@ -4,6 +4,8 @@ import { btn, input, Avatar } from "./ui";
 import { cupo, cuando } from "./lib/logica";
 import { DEPORTES_COM, ORDEN, configDe, etiqueta, cap } from "./lib/modalidades";
 import SelectorLugar from "./SelectorLugar";
+import SelectorZona from "./SelectorZona";
+import { nombreZona, bandera } from "./lib/zonas";
 import Planificaciones from "./Planificaciones";
 
 const FILA = "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
@@ -28,7 +30,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
   const [copiado, setCopiado] = useState(false);
   const [esAdmin, setEsAdmin] = useState(false);
   const [zonas, setZonas] = useState([]);
-  const [ajustes, setAjustes] = useState({ nombre: comunidad.nombre, zona_id: comunidad.zona_id ?? "", whatsapp_link: comunidad.whatsapp_link ?? "", deportes: cfg.deportes, modalidades: cfg.modalidades });
+  const [ajustes, setAjustes] = useState({ nombre: comunidad.nombre, zona_id: comunidad.zona_id ?? "", whatsapp_link: comunidad.whatsapp_link ?? "", publica: comunidad.publica ?? false, descripcion: comunidad.descripcion ?? "", deportes: cfg.deportes, modalidades: cfg.modalidades });
   const [aviso, setAviso] = useState("");
   const [errorPartido, setErrorPartido] = useState("");
   const [otro, setOtro] = useState({});
@@ -75,9 +77,9 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
     const wsp = ajustes.whatsapp_link.trim();
     if (wsp && !wsp.startsWith("https://chat.whatsapp.com/")) return setAviso("El link del grupo debe empezar con https://chat.whatsapp.com/");
     const { data, error } = await supabase.from("comunidades")
-      .update({ nombre: ajustes.nombre.trim(), zona_id: ajustes.zona_id || null, whatsapp_link: wsp || null, deportes: ajustes.deportes,
+      .update({ nombre: ajustes.nombre.trim(), zona_id: ajustes.zona_id || null, whatsapp_link: wsp || null, publica: ajustes.publica, descripcion: ajustes.descripcion.trim() || null, deportes: ajustes.deportes,
         modalidades: Object.fromEntries(ajustes.deportes.map((d) => [d, ajustes.modalidades[d] ?? DEPORTES_COM[d].preset])) })
-      .eq("id", comunidad.id).select("*, zonas(nombre, provincia, lat, lng)").single();
+      .eq("id", comunidad.id).select("*, zonas(nombre, provincia, pais, lat, lng)").single();
     if (error) return setAviso("No se pudieron guardar los cambios.");
     onCambio(data);
     setAviso("Cambios guardados.");
@@ -138,7 +140,8 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
       <button onClick={onVolver} className="-ml-2 inline-flex min-h-11 items-center px-2 font-semibold text-cesped">Volver a comunidades</button>
       <div>
         <h2 className="break-words text-3xl font-extrabold">{comunidad.nombre}</h2>
-        {comunidad.zonas && <p className="text-tinta/70">{comunidad.zonas.nombre}, {comunidad.zonas.provincia}</p>}
+        {comunidad.zonas && <p className="text-tinta/70">{bandera(comunidad.zonas.pais)} {nombreZona(comunidad.zonas)}{comunidad.publica && " · Pública"}</p>}
+        {comunidad.descripcion && <p className="mt-1">{comunidad.descripcion}</p>}
         {comunidad.whatsapp_link && (
           <a href={comunidad.whatsapp_link} target="_blank" rel="noreferrer" className={`${btn} mt-3 bg-panel text-cesped`}>Abrir grupo de WhatsApp</a>
         )}
@@ -290,10 +293,14 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
           <label className="block text-sm font-semibold">Nombre de la comunidad
             <input className={input} value={ajustes.nombre} onChange={(e) => setAjustes({ ...ajustes, nombre: e.target.value })} />
           </label>
-          <label className="block text-sm font-semibold">Zona
-            <select className={input} value={ajustes.zona_id} onChange={(e) => setAjustes({ ...ajustes, zona_id: e.target.value })}>
-              {zonas.map((z) => <option key={z.id} value={z.id}>{z.nombre}, {z.provincia}</option>)}
-            </select>
+          <SelectorZona zonas={zonas} valor={ajustes.zona_id} onChange={(id) => setAjustes({ ...ajustes, zona_id: id })} />
+          <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+            <input type="checkbox" className="size-5 accent-[var(--color-pasto)]" checked={ajustes.publica} onChange={(e) => setAjustes({ ...ajustes, publica: e.target.checked })} />
+            <span>Comunidad pública <span className="font-normal text-tinta/70">(aparece en Explorar y cualquiera puede unirse sin código)</span></span>
+          </label>
+          <label className="block text-sm font-semibold">Descripción corta (opcional)
+            <input className={input} maxLength={140} placeholder="Ej: Fútbol 7 los jueves a las 21 en Las Quintas" value={ajustes.descripcion} onChange={(e) => setAjustes({ ...ajustes, descripcion: e.target.value })} />
+            <span className="block text-xs font-normal text-tinta/70">{ajustes.descripcion.length}/140</span>
           </label>
           <fieldset className="space-y-3">
             <legend className="text-sm font-semibold">Deportes de la comunidad</legend>

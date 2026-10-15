@@ -3,8 +3,10 @@ import { supabase } from "./lib/supabase";
 import { btn, input } from "./ui";
 import { cuando } from "./lib/logica";
 import { DEPORTES_COM, ORDEN, etiqueta, cap } from "./lib/modalidades";
+import { nombreZona, bandera } from "./lib/zonas";
+import SelectorZona from "./SelectorZona";
 
-export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
+export default function Comunidades({ onAbrir, userId, onAbrirPartido, onExplorar }) {
   const [lista, setLista] = useState([]);
   const [nombre, setNombre] = useState("");
   const [codigo, setCodigo] = useState("");
@@ -13,9 +15,10 @@ export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
   const [zona, setZona] = useState("");
   const [proximos, setProximos] = useState([]);
   const [deportesNuevos, setDeportesNuevos] = useState(["futbol"]);
+  const [publica, setPublica] = useState(false);
 
   const cargar = async () => {
-    const { data } = await supabase.from("comunidades").select("*, zonas(nombre, provincia, lat, lng)").order("created_at", { ascending: false });
+    const { data } = await supabase.from("comunidades").select("*, zonas(nombre, provincia, pais, lat, lng)").order("created_at", { ascending: false });
     setLista(data ?? []);
   };
   useEffect(() => {
@@ -47,9 +50,10 @@ export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
     const { data, error } = await supabase.rpc("crear_comunidad", { p_nombre: nombre.trim(), p_zona: zona || null });
     if (error) return setError(error.message);
     setNombre("");
-    if (deportesNuevos.join() !== "futbol") await supabase.from("comunidades").update({ deportes: deportesNuevos }).eq("id", data.id);
+    if (deportesNuevos.join() !== "futbol" || publica) await supabase.from("comunidades").update({ deportes: deportesNuevos, publica }).eq("id", data.id);
     setDeportesNuevos(["futbol"]);
-    const { data: completa } = await supabase.from("comunidades").select("*, zonas(nombre, provincia, lat, lng)").eq("id", data.id).single();
+    setPublica(false);
+    const { data: completa } = await supabase.from("comunidades").select("*, zonas(nombre, provincia, pais, lat, lng)").eq("id", data.id).single();
     onAbrir(completa ?? data);
   }
   async function unirse() {
@@ -78,17 +82,24 @@ export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
           </ul>
         </section>
       )}
+      <button onClick={onExplorar} className="flex w-full items-center gap-3 rounded-2xl bg-pasto p-4 text-left text-white transition hover:shadow-[0_0_24px_-6px_var(--color-cesped)]">
+        <span aria-hidden="true" className="text-3xl">🧭</span>
+        <span>
+          <span className="block font-display text-lg font-extrabold">Explorar comunidades</span>
+          <span className="block text-sm text-white/85">Encontrá grupos cerca tuyo, en tu provincia o en otros países.</span>
+        </span>
+      </button>
       <section>
         <h2 className="mb-2 text-xl font-extrabold">Tus comunidades</h2>
         {lista.length === 0 ? (
-          <p className="text-tinta/70">Todavía no estás en ninguna. Creá una o pedile el link de invitación a tus amigos.</p>
+          <p className="text-tinta/70">Todavía no estás en ninguna. Explorá las públicas, creá una o pedile el link de invitación a tus amigos.</p>
         ) : (
           <ul className="space-y-2">
             {lista.map((c) => (
               <li key={c.id}>
                 <button onClick={() => onAbrir(c)} className="w-full rounded-2xl bg-panel p-4 text-left font-extrabold transition hover:bg-panel-alto">
                   {c.nombre}
-                  {c.zonas && <span className="block text-sm font-normal text-tinta/70">{c.zonas.nombre}, {c.zonas.provincia}</span>}
+                  {c.zonas && <span className="block text-sm font-normal text-tinta/70">{bandera(c.zonas.pais)} {nombreZona(c.zonas)}{c.publica && " · Pública"}</span>}
                 </button>
               </li>
             ))}
@@ -109,11 +120,13 @@ export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <input className={input} placeholder="Ej: Los pibes del jueves" value={nombre} onChange={(e) => setNombre(e.target.value)} />
-          <select aria-label="Zona" className={input} value={zona} onChange={(e) => setZona(e.target.value)}>
-            {zonas.map((z) => <option key={z.id} value={z.id}>{z.nombre}, {z.provincia}</option>)}
-          </select>
           <button disabled={!nombre.trim()} onClick={crear} className={`${btn} bg-pasto text-white disabled:opacity-40`}>Crear</button>
         </div>
+        <SelectorZona zonas={zonas} valor={zona} onChange={setZona} />
+        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+          <input type="checkbox" className="size-5 accent-[var(--color-pasto)]" checked={publica} onChange={(e) => setPublica(e.target.checked)} />
+          <span>Comunidad pública <span className="font-normal text-tinta/70">(aparece en Explorar y cualquiera puede unirse)</span></span>
+        </label>
       </section>
       <section className="space-y-2">
         <h3 className="font-extrabold">Unirme con un código</h3>

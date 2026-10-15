@@ -1,6 +1,8 @@
 {
   "name": "doparti",
   "private": true,
+  "author": "Mateo Nicolás González",
+  "license": "SEE LICENSE IN LICENSE",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
