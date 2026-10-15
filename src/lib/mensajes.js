@@ -1,7 +1,6 @@
 import { cuando, cupo } from "./logica";
 
-const mapa = (p) => (p.sede_lat != null ? `https://www.google.com/maps/search/?api=1&query=${p.sede_lat},${p.sede_lng}` : "");
-const lugar = (p) => [`📍 ${p.sede}${p.sede_direccion ? ` (${p.sede_direccion})` : ""}`, mapa(p) && `🗺️ ${mapa(p)}`];
+const lugar = (p) => [`📍 ${p.sede}${p.sede_direccion ? ` (${p.sede_direccion})` : ""}`];
 const unir = (lineas) => lineas.filter((l) => l !== "" && l !== false && l != null).join("\n");
 
 export const convocatoria = (p, anotados) =>

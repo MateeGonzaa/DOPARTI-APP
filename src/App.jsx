@@ -5,6 +5,7 @@ import Comunidades from "./Comunidades";
 import Comunidad from "./Comunidad";
 import Detalle from "./Detalle";
 import Perfil from "./Perfil";
+import PerfilPublico from "./PerfilPublico";
 import { Cargando, Logo } from "./ui";
 import Menu from "./Menu";
 
@@ -14,6 +15,7 @@ export default function App() {
   const [listo, setListo] = useState(false);
   const [comunidad, setComunidad] = useState(null);
   const [partidoId, setPartidoId] = useState(null);
+  const [perfilId, setPerfilId] = useState(null);
   const [verPerfil, setVerPerfil] = useState(false);
   const [menu, setMenu] = useState(false);
 
@@ -43,7 +45,7 @@ export default function App() {
   if (sesion === undefined) return <Cargando />;
   if (!sesion) return <Auth onPerfilActualizado={() => supabase.auth.getUser().then(({ data }) => cargarPerfil(data.user.id))} />;
 
-  const inicio = () => { setComunidad(null); setPartidoId(null); setVerPerfil(false); };
+  const inicio = () => { setComunidad(null); setPartidoId(null); setPerfilId(null); setVerPerfil(false); };
 
   return (
     <div className="mx-auto max-w-xl space-y-5 p-4 pb-10 sm:space-y-6 sm:p-5">
@@ -62,10 +64,13 @@ export default function App() {
       {!listo ? <Cargando /> : verPerfil ? (
         <Perfil perfil={perfil} onCerrar={() => setVerPerfil(false)}
           onGuardado={() => { cargarPerfil(sesion.user.id); setVerPerfil(false); }} />
+      ) : perfilId ? (
+        <PerfilPublico id={perfilId} userId={sesion.user.id} onVolver={() => setPerfilId(null)} />
       ) : partidoId ? (
-        <Detalle id={partidoId} userId={sesion.user.id} onVolver={() => setPartidoId(null)} />
+        <Detalle id={partidoId} userId={sesion.user.id} onVolver={() => setPartidoId(null)} onVerPerfil={setPerfilId} />
       ) : comunidad ? (
-        <Comunidad comunidad={comunidad} userId={sesion.user.id} onCambio={setComunidad} onVolver={() => setComunidad(null)} onAbrirPartido={setPartidoId} />
+        <Comunidad comunidad={comunidad} userId={sesion.user.id} onCambio={setComunidad} onVolver={() => setComunidad(null)}
+          onAbrirPartido={setPartidoId} onVerPerfil={setPerfilId} />
       ) : (
         <Comunidades onAbrir={setComunidad} />
       )}
@@ -73,7 +78,7 @@ export default function App() {
       <Menu abierto={menu} onCerrar={() => setMenu(false)} perfil={perfil}
         items={[
           { texto: "Mis comunidades", onClick: inicio },
-          { texto: "Mi perfil", onClick: () => setVerPerfil(true) },
+          { texto: "Mi perfil", onClick: () => { setPerfilId(null); setVerPerfil(true); } },
           { texto: "Salir", onClick: () => supabase.auth.signOut(), peligro: true },
         ]} />
     </div>

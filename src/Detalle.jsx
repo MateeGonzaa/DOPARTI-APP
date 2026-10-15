@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, Avatar, Cargando } from "./ui";
 import { cupo, cuando, sortear } from "./lib/logica";
-import Mapa from "./Mapa";
 import { convocatoria, equiposMsg, faltanMsg } from "./lib/mensajes";
 
 function Equipo({ nombre, color, ids, quien }) {
@@ -14,7 +13,7 @@ function Equipo({ nombre, color, ids, quien }) {
   );
 }
 
-export default function Detalle({ id, userId, onVolver }) {
+export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
   const [p, setP] = useState(null);
 
   const cargar = async () => {
@@ -62,12 +61,13 @@ export default function Detalle({ id, userId, onVolver }) {
     onVolver();
   }
 
-  const linkMapa = p.sede_lat != null ? `https://www.google.com/maps/search/?api=1&query=${p.sede_lat},${p.sede_lng}` : "";
   const wa = (texto) => `https://wa.me/?text=${encodeURIComponent(texto)}`;
   const nombre = (uid) => quien(uid)?.apodo ?? "?";
   const Fila = ({ i, n }) => (
-    <li className="flex items-center justify-between rounded-lg bg-panel px-3 py-2">
-      <span className="flex items-center gap-2"><Avatar perfil={i.profiles} size={28} />{n}. {i.profiles?.apodo}</span>
+    <li>
+      <button onClick={() => onVerPerfil(i.usuario_id)} className="flex w-full items-center gap-2 rounded-lg bg-panel px-3 py-2 text-left hover:bg-panel-alto">
+        <Avatar perfil={i.profiles} size={28} />{n}. {i.profiles?.apodo}
+      </button>
     </li>
   );
 
@@ -79,13 +79,6 @@ export default function Detalle({ id, userId, onVolver }) {
         <p className="capitalize">{cuando(p)}</p>
         <p>{p.sede}{p.sede_direccion && ` — ${p.sede_direccion}`}</p>
       </header>
-
-      {p.sede_lat != null && (
-        <div className="space-y-2">
-          <Mapa lat={p.sede_lat} lng={p.sede_lng} nombre={p.sede} />
-          <a href={linkMapa} target="_blank" rel="noreferrer" className="text-sm font-semibold text-cesped">Abrir en Google Maps</a>
-        </div>
-      )}
 
       <div>
         <div className="mb-1 flex justify-between text-sm font-semibold">

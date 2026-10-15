@@ -1,6 +1,35 @@
 export const btn = "inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2 font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cesped";
 export const input = "min-h-11 w-full rounded-lg border border-tinta/25 bg-panel px-3 py-2.5 text-base focus-visible:outline-2 focus-visible:outline-cesped";
 
+export const POSICIONES = ["Arquero", "Defensor", "Mediocampista", "Delantero"];
+export const PIES = [["diestro", "Diestro"], ["zurdo", "Zurdo"], ["ambidiestro", "Ambidiestro"]];
+export const nombrePie = (v) => PIES.find(([k]) => k === v)?.[1];
+
+// Cada 3 partidos jugados se sube un nivel. No tiene tope.
+export const nivelDe = (jugados) => Math.floor(jugados / 3) + 1;
+
+export function Nivel({ jugados }) {
+  const n = nivelDe(jugados);
+  const en = jugados % 3;
+  const faltan = 3 - en;
+  return (
+    <div className="rounded-2xl bg-panel p-4">
+      <div className="flex items-baseline justify-between">
+        <span className="font-display text-2xl font-extrabold text-cesped">Nivel {n}</span>
+        <span className="text-sm text-tinta/70">{jugados} {jugados === 1 ? "partido jugado" : "partidos jugados"}</span>
+      </div>
+      <div className="mt-2 flex gap-1" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={`h-2 flex-1 rounded-full ${i < en ? "bg-cesped shadow-[0_0_10px_var(--color-cesped)]" : "bg-tinta/15"}`} />
+        ))}
+      </div>
+      <p className="mt-1 text-sm text-tinta/70">
+        {faltan} {faltan === 1 ? "partido" : "partidos"} para el nivel {n + 1}
+      </p>
+    </div>
+  );
+}
+
 export function Avatar({ perfil, size = 32 }) {
   const style = { width: size, height: size };
   return perfil?.avatar_url ? (
