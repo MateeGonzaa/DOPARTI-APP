@@ -2,27 +2,36 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input, Avatar } from "./ui";
 import { cupo, cuando } from "./lib/logica";
+import { DEPORTES_COM, ORDEN, configDe, etiqueta, cap } from "./lib/modalidades";
 import SelectorLugar from "./SelectorLugar";
 import Planificaciones from "./Planificaciones";
 
-const TIPOS = [5, 7, 11];
+const FILA = "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+const ESTADOS = [["proximos", "Próximos"], ["coordinar", "A coordinar"], ["abiertos", "Abiertos"], ["pasados", "Anteriores"], ["todos", "Todos"]];
+const sinFecha = (p) => p.a_coordinar || !p.fecha || !p.hora;
+const instante = (p) => (sinFecha(p) ? Infinity : new Date(`${p.fecha}T${p.hora}`).getTime());
+const cmp = (a, b) => (a === b ? 0 : a < b ? -1 : 1);
 const SEDE_VACIA = { nombre: "", direccion: "", lat: null, lng: null };
 
 export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbrirPartido, onVerPerfil }) {
+  const cfg = configDe(comunidad);
   const [tab, setTab] = useState("partidos");
   const [partidos, setPartidos] = useState([]);
   const [sedes, setSedes] = useState([]);
   const [miembros, setMiembros] = useState([]);
-  const [filtro, setFiltro] = useState("todos");
+  const [fDeporte, setFDeporte] = useState("todos");
+  const [fTipo, setFTipo] = useState("todos");
+  const [fEstado, setFEstado] = useState("proximos");
   const [creando, setCreando] = useState(false);
-  const [f, setF] = useState({ tipo: 7, fecha: "", hora: "", sede: "", sede_direccion: "", sede_lat: null, sede_lng: null, a_coordinar: false });
+  const [f, setF] = useState({ deporte: cfg.deportes[0], tipo: cfg.modalidades[cfg.deportes[0]][0], fecha: "", hora: "", sede: "", sede_direccion: "", sede_lat: null, sede_lng: null, a_coordinar: false });
   const [sede, setSede] = useState(SEDE_VACIA);
   const [copiado, setCopiado] = useState(false);
   const [esAdmin, setEsAdmin] = useState(false);
   const [zonas, setZonas] = useState([]);
-  const [ajustes, setAjustes] = useState({ nombre: comunidad.nombre, zona_id: comunidad.zona_id ?? "", whatsapp_link: comunidad.whatsapp_link ?? "" });
+  const [ajustes, setAjustes] = useState({ nombre: comunidad.nombre, zona_id: comunidad.zona_id ?? "", whatsapp_link: comunidad.whatsapp_link ?? "", deportes: cfg.deportes, modalidades: cfg.modalidades });
   const [aviso, setAviso] = useState("");
   const [errorPartido, setErrorPartido] = useState("");
+  const [otro, setOtro] = useState({});
 
   const cargar = async () => {
     const [a, b] = await Promise.all([
@@ -66,7 +75,8 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
     const wsp = ajustes.whatsapp_link.trim();
     if (wsp && !wsp.startsWith("https://chat.whatsapp.com/")) return setAviso("El link del grupo debe empezar con https://chat.whatsapp.com/");
     const { data, error } = await supabase.from("comunidades")
-      .update({ nombre: ajustes.nombre.trim(), zona_id: ajustes.zona_id || null, whatsapp_link: wsp || null })
+      .update({ nombre: ajustes.nombre.trim(), zona_id: ajustes.zona_id || null, whatsapp_link: wsp || null, deportes: ajustes.deportes,
+        modalidades: Object.fromEntries(ajustes.deportes.map((d) => [d, ajustes.modalidades[d] ?? DEPORTES_COM[d].preset])) })
       .eq("id", comunidad.id).select("*, zonas(nombre, provincia, lat, lng)").single();
     if (error) return setAviso("No se pudieron guardar los cambios.");
     onCambio(data);
@@ -83,9 +93,45 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
   const copiar = async () => {
     try { await navigator.clipboard.writeText(link); setCopiado(true); } catch { /* sin permiso */ }
   };
-  const visibles = partidos.filter((p) => filtro === "todos" || p.tipo === filtro);
+  const ahora = Date.now();
+  const esFuturo = (p) => sinFecha(p) || instante(p) >= ahora - 3 * 3600 * 1000; // sigue "próximo" hasta 3 h después de empezar
+  const depDe = (p) => p.deporte ?? "futbol";
+  const deporteActivo = cfg.deportes.length === 1 ? cfg.deportes[0] : fDeporte !== "todos" ? fDeporte : null;
+  const tiposDisp = deporteActivo
+    ? [...new Set([...(cfg.modalidades[deporteActivo] ?? []), ...partidos.filter((p) => depDe(p) === deporteActivo).map((p) => p.tipo)])].sort((a, b) => a - b)
+    : [];
+  const visibles = partidos
+    .filter((p) => (fDeporte === "todos" || depDe(p) === fDeporte)
+      && (!deporteActivo || fTipo === "todos" || p.tipo === fTipo)
+      && (fEstado === "todos" || (fEstado === "proximos" && esFuturo(p)) || (fEstado === "coordinar" && sinFecha(p))
+        || (fEstado === "abiertos" && p.abierto) || (fEstado === "pasados" && !esFuturo(p))))
+    .sort((a, b) => (fEstado === "pasados" ? cmp(instante(b), instante(a)) : cmp(instante(a), instante(b))));
+  const abrirCrear = () => {
+    const d = cfg.deportes.includes(f.deporte) ? f.deporte : cfg.deportes[0];
+    const m = cfg.modalidades[d];
+    setF({ ...f, deporte: d, tipo: m.includes(f.tipo) ? f.tipo : m[0] });
+    setCreando(true);
+  };
   const setCampo = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const centro = comunidad.zonas?.lat != null ? { lat: comunidad.zonas.lat, lng: comunidad.zonas.lng } : undefined;
+  const alternarDeporte = (d) => {
+    const on = ajustes.deportes.includes(d);
+    if (on && ajustes.deportes.length === 1) return; // al menos un deporte
+    const deportes = on ? ajustes.deportes.filter((x) => x !== d) : ORDEN.filter((x) => x === d || ajustes.deportes.includes(x));
+    setAjustes({ ...ajustes, deportes, modalidades: { ...ajustes.modalidades, [d]: ajustes.modalidades[d]?.length ? ajustes.modalidades[d] : DEPORTES_COM[d].preset } });
+  };
+  const alternarModalidad = (d, t) => {
+    const act = ajustes.modalidades[d] ?? [];
+    const nuevas = act.includes(t) ? act.filter((x) => x !== t) : [...act, t].sort((a, b) => a - b);
+    if (!nuevas.length) return; // al menos una modalidad por deporte
+    setAjustes({ ...ajustes, modalidades: { ...ajustes.modalidades, [d]: nuevas } });
+  };
+  const agregarOtra = (d) => {
+    const n = Number(otro[d]);
+    if (!Number.isInteger(n) || n < 1 || n > 15) return;
+    if (!(ajustes.modalidades[d] ?? []).includes(n)) alternarModalidad(d, n);
+    setOtro({ ...otro, [d]: "" });
+  };
 
   return (
     <div className="space-y-5">
@@ -97,7 +143,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
           <a href={comunidad.whatsapp_link} target="_blank" rel="noreferrer" className={`${btn} mt-3 bg-panel text-cesped`}>Abrir grupo de WhatsApp</a>
         )}
       </div>
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+      <div className={FILA}>
         {[["partidos", "Partidos"], ["plan", "Planificación"], ["sedes", "Sedes"], ["miembros", "Miembros"], ["invitar", "Invitar"], ...(esAdmin ? [["ajustes", "Ajustes"]] : [])].map(([k, t]) => (
           <button key={k} onClick={() => setTab(k)} className={`${btn} shrink-0 py-1 ${tab === k ? "bg-tinta text-fondo" : "bg-panel"}`}>{t}</button>
         ))}
@@ -105,9 +151,18 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
 
       {tab === "partidos" && (creando ? (
         <div className="space-y-3 rounded-2xl bg-panel p-5">
-          <div className="flex gap-2">
-            {TIPOS.map((t) => (
-              <button key={t} onClick={() => setF({ ...f, tipo: t })} className={`${btn} flex-1 ${f.tipo === t ? "bg-pasto text-white" : "bg-panel-alto"}`}>Fútbol {t}</button>
+          {cfg.deportes.length > 1 && (
+            <div className="flex flex-wrap gap-2">
+              {cfg.deportes.map((d) => (
+                <button key={d} type="button" aria-pressed={f.deporte === d} onClick={() => setF({ ...f, deporte: d, tipo: cfg.modalidades[d][0] })}
+                  className={`${btn} py-1 ${f.deporte === d ? "bg-pasto text-white" : "bg-panel-alto"}`}>{DEPORTES_COM[d].emoji} {DEPORTES_COM[d].nombre}</button>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {(cfg.modalidades[f.deporte] ?? []).map((t) => (
+              <button key={t} type="button" aria-pressed={f.tipo === t} onClick={() => setF({ ...f, tipo: t })}
+                className={`${btn} py-1 ${f.tipo === t ? "bg-pasto text-white" : "bg-panel-alto"}`}>{DEPORTES_COM[f.deporte].formato(t)}</button>
             ))}
           </div>
           <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
@@ -145,15 +200,27 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-2">
-              {["todos", ...TIPOS].map((x) => (
-                <button key={x} onClick={() => setFiltro(x)} className={`${btn} py-1 ${filtro === x ? "bg-tinta text-fondo" : "bg-panel"}`}>
-                  {x === "todos" ? "Todos" : `F${x}`}
-                </button>
+          <div className="space-y-3">
+            <button onClick={abrirCrear} className={`${btn} w-full bg-pasto text-white sm:w-auto`}>Crear partido</button>
+            {cfg.deportes.length > 1 && (
+              <div className={FILA} role="group" aria-label="Filtrar por deporte">
+                {[["todos", "Todos los deportes"], ...cfg.deportes.map((d) => [d, `${DEPORTES_COM[d].emoji} ${DEPORTES_COM[d].nombre}`])].map(([k, t]) => (
+                  <button key={k} onClick={() => { setFDeporte(k); setFTipo("todos"); }} className={`${btn} shrink-0 py-1 ${fDeporte === k ? "bg-tinta text-fondo" : "bg-panel"}`}>{t}</button>
+                ))}
+              </div>
+            )}
+            {deporteActivo && tiposDisp.length > 1 && (
+              <div className={FILA} role="group" aria-label="Filtrar por modalidad">
+                {[["todos", "Todas"], ...tiposDisp.map((t) => [t, DEPORTES_COM[deporteActivo].formato(t)])].map(([k, t]) => (
+                  <button key={k} onClick={() => setFTipo(k)} className={`${btn} shrink-0 py-1 ${fTipo === k ? "bg-tinta text-fondo" : "bg-panel"}`}>{t}</button>
+                ))}
+              </div>
+            )}
+            <div className={FILA} role="group" aria-label="Filtrar por estado">
+              {ESTADOS.map(([k, t]) => (
+                <button key={k} onClick={() => setFEstado(k)} className={`${btn} shrink-0 py-1 ${fEstado === k ? "bg-tinta text-fondo" : "bg-panel"}`}>{t}</button>
               ))}
             </div>
-            <button onClick={() => setCreando(true)} className={`${btn} bg-pasto text-white`}>Crear partido</button>
           </div>
           {visibles.length === 0 ? (
             <p className="text-tinta/70">No hay partidos acá. Creá el primero.</p>
@@ -163,11 +230,12 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
                 <li key={p.id}>
                   <button onClick={() => onAbrirPartido(p.id)} className="w-full rounded-2xl bg-panel p-4 text-left transition hover:bg-panel-alto">
                     <div className="flex justify-between font-extrabold">
-                      <span className="font-display text-lg">Fútbol {p.tipo}</span>
+                      <span className="font-display text-lg">{DEPORTES_COM[p.deporte ?? "futbol"]?.emoji} {etiqueta(p)}</span>
                       <span className="font-display text-lg tabular-nums text-cesped">{Math.min(p.inscripciones[0].count, cupo(p))}/{cupo(p)}</span>
                     </div>
-                    <p className="capitalize">{cuando(p)}</p>
+                    <p>{cap(cuando(p))}</p>
                     <p className="text-sm text-tinta/70">{p.sede}{p.abierto && " · Abierto a otras comunidades"}</p>
+                    {p.resultado_a != null && <p className="text-sm font-semibold text-cesped">Resultado: {p.resultado_a} - {p.resultado_b}</p>}
                   </button>
                 </li>
               ))}
@@ -227,6 +295,31 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
               {zonas.map((z) => <option key={z.id} value={z.id}>{z.nombre}, {z.provincia}</option>)}
             </select>
           </label>
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-semibold">Deportes de la comunidad</legend>
+            <div className="flex flex-wrap gap-2">
+              {ORDEN.map((d) => (
+                <button key={d} type="button" aria-pressed={ajustes.deportes.includes(d)} onClick={() => alternarDeporte(d)}
+                  className={`${btn} py-1 ${ajustes.deportes.includes(d) ? "bg-pasto text-white" : "bg-panel"}`}>{DEPORTES_COM[d].emoji} {DEPORTES_COM[d].nombre}</button>
+              ))}
+            </div>
+            {ajustes.deportes.map((d) => (
+              <div key={d} className="space-y-2 rounded-2xl bg-panel p-3">
+                <p className="text-sm font-semibold">{DEPORTES_COM[d].emoji} Modalidades de {DEPORTES_COM[d].nombre}</p>
+                <div className="flex flex-wrap gap-2">
+                  {[...new Set([...DEPORTES_COM[d].preset, ...(ajustes.modalidades[d] ?? [])])].sort((a, b) => a - b).map((t) => (
+                    <button key={t} type="button" aria-pressed={(ajustes.modalidades[d] ?? []).includes(t)} onClick={() => alternarModalidad(d, t)}
+                      className={`${btn} py-1 text-sm ${(ajustes.modalidades[d] ?? []).includes(t) ? "bg-pasto text-white" : "bg-panel-alto"}`}>{DEPORTES_COM[d].formato(t)}</button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input className={input} type="number" inputMode="numeric" min={1} max={15} placeholder="Otra: jugadores por equipo"
+                    value={otro[d] ?? ""} onChange={(e) => setOtro({ ...otro, [d]: e.target.value })} />
+                  <button type="button" onClick={() => agregarOtra(d)} className={`${btn} shrink-0 bg-panel-alto`}>Agregar</button>
+                </div>
+              </div>
+            ))}
+          </fieldset>
           <label className="block text-sm font-semibold">Link del grupo de WhatsApp (opcional)
             <input className={input} inputMode="url" placeholder="https://chat.whatsapp.com/..." value={ajustes.whatsapp_link} onChange={(e) => setAjustes({ ...ajustes, whatsapp_link: e.target.value })} />
           </label>

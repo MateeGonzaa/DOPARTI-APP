@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, Avatar, Cargando } from "./ui";
 import { cupo, cuando, esProximo, instante } from "./lib/logica";
+import { etiqueta, cap } from "./lib/modalidades";
 
 // Ventana para invitar a un amigo puntual a uno de tus próximos partidos.
 export default function InvitarAPartido({ amigo, userId, onCerrar }) {
@@ -11,7 +12,7 @@ export default function InvitarAPartido({ amigo, userId, onCerrar }) {
 
   useEffect(() => {
     Promise.all([
-      supabase.from("partidos").select("id, tipo, fecha, hora, a_coordinar, sede, comunidades(nombre), inscripciones(usuario_id)"),
+      supabase.from("partidos").select("id, deporte, tipo, fecha, hora, a_coordinar, sede, comunidades(nombre), inscripciones(usuario_id)"),
       supabase.from("invitaciones").select("partido_id").eq("de_id", userId).eq("para_id", amigo.id),
     ]).then(([a, b]) => {
       setInvitados(new Set((b.data ?? []).map((x) => x.partido_id)));
@@ -49,8 +50,8 @@ export default function InvitarAPartido({ amigo, userId, onCerrar }) {
             {lista.map((p) => (
               <li key={p.id} className="flex items-center gap-3 rounded-lg bg-panel-alto p-3">
                 <div className="min-w-0 flex-1">
-                  <p className="font-display font-extrabold">Fútbol {p.tipo} <span className="font-sans text-sm font-normal text-tinta/70">{Math.min(p.inscripciones.length, cupo(p))}/{cupo(p)}</span></p>
-                  <p className="text-sm capitalize">{cuando(p)}</p>
+                  <p className="font-display font-extrabold">{etiqueta(p)} <span className="font-sans text-sm font-normal text-tinta/70">{Math.min(p.inscripciones.length, cupo(p))}/{cupo(p)}</span></p>
+                  <p className="text-sm">{cap(cuando(p))}</p>
                   <p className="truncate text-sm text-tinta/70">{p.sede}{p.comunidades?.nombre && ` · ${p.comunidades.nombre}`}</p>
                 </div>
                 {invitados.has(p.id)

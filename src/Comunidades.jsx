@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input } from "./ui";
 import { cuando } from "./lib/logica";
+import { DEPORTES_COM, ORDEN, etiqueta, cap } from "./lib/modalidades";
 
 export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
   const [lista, setLista] = useState([]);
@@ -11,6 +12,7 @@ export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
   const [zonas, setZonas] = useState([]);
   const [zona, setZona] = useState("");
   const [proximos, setProximos] = useState([]);
+  const [deportesNuevos, setDeportesNuevos] = useState(["futbol"]);
 
   const cargar = async () => {
     const { data } = await supabase.from("comunidades").select("*, zonas(nombre, provincia, lat, lng)").order("created_at", { ascending: false });
@@ -28,7 +30,7 @@ export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
   useEffect(() => {
     if (!userId) return;
     supabase.from("inscripciones")
-      .select("partidos(id, tipo, fecha, hora, a_coordinar, sede, comunidades(nombre))")
+      .select("partidos(id, deporte, tipo, fecha, hora, a_coordinar, sede, comunidades(nombre))")
       .eq("usuario_id", userId)
       .then(({ data }) => {
         const desde = Date.now() - 3 * 3600 * 1000; // un partido sigue "próximo" hasta 3 horas después de empezar
@@ -45,6 +47,8 @@ export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
     const { data, error } = await supabase.rpc("crear_comunidad", { p_nombre: nombre.trim(), p_zona: zona || null });
     if (error) return setError(error.message);
     setNombre("");
+    if (deportesNuevos.join() !== "futbol") await supabase.from("comunidades").update({ deportes: deportesNuevos }).eq("id", data.id);
+    setDeportesNuevos(["futbol"]);
     const { data: completa } = await supabase.from("comunidades").select("*, zonas(nombre, provincia, lat, lng)").eq("id", data.id).single();
     onAbrir(completa ?? data);
   }
@@ -65,8 +69,8 @@ export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
             {proximos.map((p) => (
               <li key={p.id}>
                 <button onClick={() => onAbrirPartido(p.id)} className="w-full rounded-2xl bg-panel p-4 text-left transition hover:bg-panel-alto">
-                  <span className="font-display text-lg font-extrabold">Fútbol {p.tipo}</span>
-                  <span className="block capitalize">{cuando(p)}</span>
+                  <span className="font-display text-lg font-extrabold">{DEPORTES_COM[p.deporte ?? "futbol"]?.emoji} {etiqueta(p)}</span>
+                  <span className="block">{cap(cuando(p))}</span>
                   <span className="block text-sm text-tinta/70">{p.sede}{p.comunidades?.nombre && ` · ${p.comunidades.nombre}`}</span>
                 </button>
               </li>
@@ -93,6 +97,16 @@ export default function Comunidades({ onAbrir, userId, onAbrirPartido }) {
       </section>
       <section className="space-y-2">
         <h3 className="font-extrabold">Crear comunidad</h3>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Deportes">
+          {ORDEN.map((d) => {
+            const on = deportesNuevos.includes(d);
+            return (
+              <button key={d} type="button" aria-pressed={on}
+                onClick={() => { if (on && deportesNuevos.length === 1) return; setDeportesNuevos(ORDEN.filter((x) => (x === d ? !on : deportesNuevos.includes(x)))); }}
+                className={`${btn} py-1 text-sm ${on ? "bg-pasto text-white" : "bg-panel"}`}>{DEPORTES_COM[d].emoji} {DEPORTES_COM[d].nombre}</button>
+            );
+          })}
+        </div>
         <div className="flex flex-wrap gap-2">
           <input className={input} placeholder="Ej: Los pibes del jueves" value={nombre} onChange={(e) => setNombre(e.target.value)} />
           <select aria-label="Zona" className={input} value={zona} onChange={(e) => setZona(e.target.value)}>

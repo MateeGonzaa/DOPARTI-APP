@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input } from "./ui";
 import SelectorLugar from "./SelectorLugar";
+import { DEPORTES_COM, configDe, etiqueta } from "./lib/modalidades";
 
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-const TIPOS = [5, 7, 11];
-const VACIA = { dia_semana: 4, hora: "21:00", tipo: 7, sede: "", sede_direccion: "", sede_lat: null, sede_lng: null, notas: "" };
+const VACIA = { dia_semana: 4, hora: "21:00", deporte: "futbol", tipo: 7, sede: "", sede_direccion: "", sede_lat: null, sede_lng: null, notas: "" };
 const pad = (n) => String(n).padStart(2, "0");
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
@@ -42,7 +42,7 @@ export default function Planificaciones({ comunidad, esAdmin, sedes, onAbrirPart
   async function agregar() {
     setError("");
     const { error } = await supabase.from("planificaciones").insert({
-      comunidad_id: comunidad.id, dia_semana: nuevo.dia_semana, hora: nuevo.hora, tipo: nuevo.tipo,
+      comunidad_id: comunidad.id, dia_semana: nuevo.dia_semana, hora: nuevo.hora, deporte: nuevo.deporte, tipo: nuevo.tipo,
       sede: nuevo.sede.trim(), sede_direccion: nuevo.sede_direccion.trim() || null,
       sede_lat: nuevo.sede_lat, sede_lng: nuevo.sede_lng, notas: nuevo.notas.trim() || null,
     });
@@ -66,7 +66,7 @@ export default function Planificaciones({ comunidad, esAdmin, sedes, onAbrirPart
     const { pr, partido } = existente(pl);
     if (partido) return onAbrirPartido(partido.id);
     const { data, error } = await supabase.from("partidos").insert({
-      comunidad_id: comunidad.id, tipo: pl.tipo, fecha: pr.fecha, hora: pr.hora,
+      comunidad_id: comunidad.id, deporte: pl.deporte ?? "futbol", tipo: pl.tipo, fecha: pr.fecha, hora: pr.hora,
       sede: pl.sede, sede_direccion: pl.sede_direccion ?? "", sede_lat: pl.sede_lat, sede_lng: pl.sede_lng,
     }).select().single();
     if (error) return setError(`No se pudo crear el partido: ${error.message}`);
@@ -74,6 +74,8 @@ export default function Planificaciones({ comunidad, esAdmin, sedes, onAbrirPart
   }
 
   const centro = comunidad.zonas?.lat != null ? { lat: comunidad.zonas.lat, lng: comunidad.zonas.lng } : undefined;
+  const cfg = configDe(comunidad);
+  const abrir = () => { const d = cfg.deportes[0]; setNuevo({ ...VACIA, deporte: d, tipo: cfg.modalidades[d][0] }); setAgregando(true); };
   const set = (k) => (e) => setNuevo({ ...nuevo, [k]: e.target.value });
 
   return (
@@ -87,7 +89,7 @@ export default function Planificaciones({ comunidad, esAdmin, sedes, onAbrirPart
           <table className="w-full min-w-[30rem] text-left text-sm">
             <caption className="sr-only">Planificación semanal</caption>
             <thead className="text-tinta/70">
-              <tr><th className="px-3 py-2 font-semibold">Día</th><th className="px-3 py-2 font-semibold">Hora</th><th className="px-3 py-2 font-semibold">Tipo</th><th className="px-3 py-2 font-semibold">Sede</th><th className="px-3 py-2"><span className="sr-only">Acciones</span></th></tr>
+              <tr><th className="px-3 py-2 font-semibold">Día</th><th className="px-3 py-2 font-semibold">Hora</th><th className="px-3 py-2 font-semibold">Modalidad</th><th className="px-3 py-2 font-semibold">Sede</th><th className="px-3 py-2"><span className="sr-only">Acciones</span></th></tr>
             </thead>
             <tbody>
               {planes.map((pl) => {
@@ -96,7 +98,7 @@ export default function Planificaciones({ comunidad, esAdmin, sedes, onAbrirPart
                   <tr key={pl.id} className="border-t border-white/10 align-top">
                     <td className="px-3 py-2"><b>{DIAS[pl.dia_semana]}</b><span className="block text-xs text-tinta/70">Próx. {pr.d.toLocaleDateString("es-AR", { day: "numeric", month: "short" })}</span></td>
                     <td className="px-3 py-2 tabular-nums">{pl.hora.slice(0, 5)}</td>
-                    <td className="px-3 py-2">F{pl.tipo}</td>
+                    <td className="px-3 py-2">{etiqueta(pl)}</td>
                     <td className="px-3 py-2"><span className="block break-words">{pl.sede}</span>{pl.notas && <span className="block text-xs text-tinta/70">{pl.notas}</span>}</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-col items-end gap-1">
@@ -122,9 +124,18 @@ export default function Planificaciones({ comunidad, esAdmin, sedes, onAbrirPart
             </label>
             <label className="text-sm font-semibold">Hora<input type="time" className={input} value={nuevo.hora} onChange={set("hora")} /></label>
           </div>
-          <div className="flex gap-2">
-            {TIPOS.map((t) => (
-              <button key={t} type="button" onClick={() => setNuevo({ ...nuevo, tipo: t })} className={`${btn} flex-1 ${nuevo.tipo === t ? "bg-pasto text-white" : "bg-panel-alto"}`}>Fútbol {t}</button>
+          {cfg.deportes.length > 1 && (
+            <div className="flex flex-wrap gap-2">
+              {cfg.deportes.map((d) => (
+                <button key={d} type="button" aria-pressed={nuevo.deporte === d} onClick={() => setNuevo({ ...nuevo, deporte: d, tipo: cfg.modalidades[d][0] })}
+                  className={`${btn} py-1 ${nuevo.deporte === d ? "bg-pasto text-white" : "bg-panel-alto"}`}>{DEPORTES_COM[d].emoji} {DEPORTES_COM[d].nombre}</button>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {(cfg.modalidades[nuevo.deporte] ?? []).map((t) => (
+              <button key={t} type="button" aria-pressed={nuevo.tipo === t} onClick={() => setNuevo({ ...nuevo, tipo: t })}
+                className={`${btn} py-1 ${nuevo.tipo === t ? "bg-pasto text-white" : "bg-panel-alto"}`}>{DEPORTES_COM[nuevo.deporte].formato(t)}</button>
             ))}
           </div>
           <div className="space-y-2">
@@ -147,7 +158,7 @@ export default function Planificaciones({ comunidad, esAdmin, sedes, onAbrirPart
           </div>
         </div>
       ) : (
-        <button onClick={() => setAgregando(true)} className={`${btn} bg-pasto text-white`}>Agregar planificación</button>
+        <button onClick={abrir} className={`${btn} bg-pasto text-white`}>Agregar planificación</button>
       ))}
       {error && <p role="alert" className="text-sm font-semibold text-brasa">{error}</p>}
     </div>

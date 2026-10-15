@@ -4,6 +4,7 @@ import { btn, input, Avatar, Cargando } from "./ui";
 import { cupo, cuando, sortear } from "./lib/logica";
 import { convocatoria, equiposMsg, faltanMsg } from "./lib/mensajes";
 import Mapa from "./Mapa";
+import { DEPORTES_COM, etiqueta, cap } from "./lib/modalidades";
 
 function Equipo({ nombre, color, ids, quien }) {
   return (
@@ -21,6 +22,7 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
   const [amigos, setAmigos] = useState([]);
   const [invitados, setInvitados] = useState(new Set());
   const [copiado, setCopiado] = useState(false);
+  const [res, setRes] = useState({ a: "", b: "" });
 
   const cargar = async () => {
     const { data } = await supabase
@@ -102,6 +104,16 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
     window.open(grupo, "_blank", "noopener");
   }
   const nombre = (uid) => quien(uid)?.apodo ?? "?";
+  const palabra = p.deporte === "padel" ? "Pareja" : "Pechera";
+  const guardarResultado = async () => {
+    await supabase.from("partidos").update({ resultado_a: Number(res.a), resultado_b: Number(res.b) }).eq("id", p.id);
+    cargar();
+  };
+  const borrarResultado = async () => {
+    await supabase.from("partidos").update({ resultado_a: null, resultado_b: null }).eq("id", p.id);
+    setRes({ a: "", b: "" });
+    cargar();
+  };
   const linkPartido = p.codigo ? `${location.origin}/?partido=${p.codigo}` : "";
   const copiarLink = async () => { try { await navigator.clipboard.writeText(linkPartido); setCopiado(true); } catch { /* sin permiso */ } };
   const alternarAbierto = async () => { await supabase.from("partidos").update({ abierto: !p.abierto }).eq("id", p.id); setCopiado(false); cargar(); };
@@ -118,8 +130,8 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
     <div className="space-y-5">
       <button onClick={onVolver} className="-ml-2 inline-flex min-h-11 items-center px-2 font-semibold text-cesped">Volver</button>
       <header>
-        <h2 className="text-3xl font-extrabold">Fútbol {p.tipo}</h2>
-        <p className="capitalize">{cuando(p)}</p>
+        <h2 className="text-3xl font-extrabold">{DEPORTES_COM[p.deporte ?? "futbol"]?.emoji} {etiqueta(p)}</h2>
+        <p>{cap(cuando(p))}</p>
         <p>{p.sede}{p.sede_direccion && ` — ${p.sede_direccion}`}</p>
       </header>
 
@@ -198,9 +210,31 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
             )}
           </div>
           <div key={JSON.stringify(p.equipos)} className="grid gap-3 sm:grid-cols-2">
-            <Equipo nombre="Pechera naranja" color="bg-naranja" ids={p.equipos.A} quien={quien} />
-            <Equipo nombre="Pechera celeste" color="bg-celeste" ids={p.equipos.B} quien={quien} />
+            <Equipo nombre={`${palabra} naranja`} color="bg-naranja" ids={p.equipos.A} quien={quien} />
+            <Equipo nombre={`${palabra} celeste`} color="bg-celeste" ids={p.equipos.B} quien={quien} />
           </div>
+        </section>
+      )}
+
+      {(p.resultado_a != null || (p.creado_por === userId && p.equipos)) && (
+        <section className="space-y-2 rounded-2xl bg-panel p-4">
+          <h3 className="font-extrabold">Resultado</h3>
+          {p.resultado_a != null ? (
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-display text-3xl font-extrabold tabular-nums">{p.resultado_a} <span className="text-tinta/50">-</span> {p.resultado_b}</p>
+                <p className="text-sm text-tinta/70">{palabra} naranja - {palabra.toLowerCase()} celeste</p>
+              </div>
+              {p.creado_por === userId && <button onClick={borrarResultado} className="px-2 py-2 text-sm font-semibold text-brasa">Borrar</button>}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input type="number" inputMode="numeric" min={0} max={999} aria-label="Resultado naranja" className={`${input} text-center`} value={res.a} onChange={(e) => setRes({ ...res, a: e.target.value })} />
+              <span aria-hidden="true">-</span>
+              <input type="number" inputMode="numeric" min={0} max={999} aria-label="Resultado celeste" className={`${input} text-center`} value={res.b} onChange={(e) => setRes({ ...res, b: e.target.value })} />
+              <button disabled={res.a === "" || res.b === ""} onClick={guardarResultado} className={`${btn} shrink-0 bg-pasto text-white disabled:opacity-40`}>Guardar</button>
+            </div>
+          )}
         </section>
       )}
 
@@ -214,7 +248,7 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
               <div className="flex flex-wrap gap-2">
                 <button onClick={copiarLink} className={`${btn} bg-pasto text-white`}>{copiado ? "Link copiado" : "Copiar link"}</button>
                 <a target="_blank" rel="noreferrer" className={`${btn} bg-panel-alto`}
-                  href={wa(`Sumate al partido de Fútbol ${p.tipo} (${cuando(p)}) en DOPARTI: ${linkPartido}`)}>Enviar por WhatsApp</a>
+                  href={wa(`Sumate al partido de ${etiqueta(p)} (${cuando(p)}) en DOPARTI: ${linkPartido}`)}>Enviar por WhatsApp</a>
               </div>
             </>
           ) : (

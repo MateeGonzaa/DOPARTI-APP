@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, Avatar, Cargando } from "./ui";
 import { cuando } from "./lib/logica";
+import { etiqueta, cap } from "./lib/modalidades";
 
 export default function Invitaciones({ userId, onVolver, onAbrirPartido, onCambio }) {
   const [tab, setTab] = useState("recibidas");
@@ -13,10 +14,17 @@ export default function Invitaciones({ userId, onVolver, onAbrirPartido, onCambi
     const [a, b] = await Promise.all([
       supabase.rpc("mis_invitaciones"),
       supabase.from("invitaciones")
-        .select("id, estado, para:profiles!para_id(id, apodo, avatar_url), partidos(id, tipo, fecha, hora, a_coordinar, sede)")
+        .select("id, estado, para:profiles!para_id(id, apodo, avatar_url), partidos(id, deporte, tipo, fecha, hora, a_coordinar, sede)")
         .eq("de_id", userId).order("created_at", { ascending: false }).limit(30),
     ]);
-    setRecibidas(a.data ?? []);
+    const rec = a.data ?? [];
+    const ids = rec.map((x) => x.partido_id).filter(Boolean);
+    let dep = {};
+    if (ids.length) {
+      const { data } = await supabase.from("partidos").select("id, deporte").in("id", ids);
+      dep = Object.fromEntries((data ?? []).map((x) => [x.id, x.deporte]));
+    }
+    setRecibidas(rec.map((x) => ({ ...x, deporte: dep[x.partido_id] ?? "futbol" })));
     setEnviadas((b.data ?? []).filter((x) => x.partidos));
     onCambio?.();
   };
@@ -58,8 +66,8 @@ export default function Invitaciones({ userId, onVolver, onAbrirPartido, onCambi
                   <p className="min-w-0"><b>{inv.de_apodo}</b> te invitó a jugar</p>
                 </div>
                 <div>
-                  <p className="font-display text-lg font-extrabold">Fútbol {inv.tipo}</p>
-                  <p className="capitalize">{cuando(inv)}</p>
+                  <p className="font-display text-lg font-extrabold">{etiqueta(inv)}</p>
+                  <p>{cap(cuando(inv))}</p>
                   <p className="text-sm text-tinta/70">{inv.sede} · {inv.comunidad}</p>
                 </div>
                 <div className="flex gap-2">
@@ -79,7 +87,7 @@ export default function Invitaciones({ userId, onVolver, onAbrirPartido, onCambi
               <Avatar perfil={inv.para} size={36} />
               <button onClick={() => onAbrirPartido(inv.partidos.id)} className="min-w-0 flex-1 text-left">
                 <b className="block truncate">{inv.para?.apodo}</b>
-                <span className="block truncate text-sm text-tinta/70">Fútbol {inv.partidos.tipo} · <span className="capitalize">{cuando(inv.partidos)}</span></span>
+                <span className="block truncate text-sm text-tinta/70">{etiqueta(inv.partidos)} · {cap(cuando(inv.partidos))}</span>
                 <span className={`block text-sm font-semibold ${inv.estado === "aceptada" ? "text-cesped" : "text-tinta/70"}`}>
                   {inv.estado === "aceptada" ? "Aceptó" : "Pendiente"}
                 </span>
