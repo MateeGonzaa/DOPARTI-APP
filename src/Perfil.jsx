@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input, Avatar } from "./ui";
 import CamposJugador from "./CamposJugador";
+import { REDES, normalizarRed } from "./lib/redes";
 import { GENEROS, MANOS } from "./lib/deportes";
 
 export default function Perfil({ perfil, onCerrar, onGuardado }) {
@@ -15,6 +16,11 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
     mano: perfil?.mano ?? MANOS[0][0],
     posiciones: perfil?.posiciones ?? (perfil?.posicion ? { futbol: perfil.posicion } : {}),
     password: "",
+    descripcion: perfil?.descripcion ?? "",
+    instagram: perfil?.redes?.instagram ?? "",
+    whatsapp: perfil?.redes?.whatsapp ?? "",
+    tiktok: perfil?.redes?.tiktok ?? "",
+    twitter: perfil?.redes?.twitter ?? "",
   });
   const [foto, setFoto] = useState(null);
   const [error, setError] = useState("");
@@ -24,6 +30,12 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
   async function guardar(e) {
     e.preventDefault();
     setError("");
+    const redes = {};
+    for (const [k, r] of Object.entries(REDES)) {
+      const n = normalizarRed(k, f[k]);
+      if (!n.ok) return setError(`Revisá tu ${r.nombre}: ${k === "whatsapp" ? "poné el número con código de país, solo números" : "usuario o link inválido"}.`);
+      if (n.valor) redes[k] = n.valor;
+    }
     setGuardando(true);
     const cambios = {
       nombre_completo: f.nombre.trim(),
@@ -35,6 +47,8 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
       mano: f.mano,
       posiciones: f.posiciones,
       posicion: f.posiciones.futbol ?? null,
+      descripcion: f.descripcion.trim() || null,
+      redes,
     };
     if (foto) {
       const ruta = `${perfil.id}/avatar`;
@@ -70,6 +84,20 @@ export default function Perfil({ perfil, onCerrar, onGuardado }) {
         <input className={input} required value={f.apodo} onChange={set("apodo")} />
       </label>
       <CamposJugador f={f} setF={setF} />
+      <label className="block text-sm font-semibold">Descripción
+        <textarea className={`${input} min-h-24`} maxLength={300} placeholder="Contá algo sobre vos: cómo jugás, tu equipo, cuándo te prendés..."
+          value={f.descripcion} onChange={set("descripcion")} />
+        <span className="mt-1 block text-right text-sm font-normal text-tinta/70">{f.descripcion.length}/300</span>
+      </label>
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-semibold">Redes</legend>
+        {Object.entries(REDES).map(([k, r]) => (
+          <label key={k} className="block text-sm font-semibold">{r.nombre}
+            <input className={input} inputMode={k === "whatsapp" ? "tel" : "text"} autoCapitalize="none" autoCorrect="off" placeholder={r.ejemplo} value={f[k]} onChange={set(k)} />
+          </label>
+        ))}
+        <p className="text-sm text-tinta/70">Poné tu usuario o pegá el link: a los demás les aparece un botón que lleva a tu perfil. Ojo: tu número de WhatsApp lo puede ver cualquier usuario de DOPARTI.</p>
+      </fieldset>
       <label className="block text-sm font-semibold">Nueva contraseña (opcional)
         <input className={input} type="password" minLength={6} placeholder="Dejala vacía para no cambiarla" value={f.password} onChange={set("password")} />
       </label>

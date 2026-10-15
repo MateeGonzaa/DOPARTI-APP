@@ -27,13 +27,15 @@ export default function Comentarios({ perfilId, apodo, userId, esMio, onVerPerfi
   const [respondiendo, setRespondiendo] = useState(null);
   const [abiertos, setAbiertos] = useState(new Set());
   const [aviso, setAviso] = useState("");
+  const [errorCarga, setErrorCarga] = useState("");
 
   const cargar = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("perfil_comentarios")
       .select("id, texto, gif_url, padre_id, created_at, autor_id, autor:profiles!autor_id(id, apodo, avatar_url), likes:comentario_likes(usuario_id)")
       .eq("perfil_id", perfilId)
       .order("created_at", { ascending: true });
+    setErrorCarga(error ? "No se pudieron cargar los comentarios. Si recién actualizaste la app, falta ejecutar la migración de la base de datos." : "");
     setItems(data ?? []);
   };
   useEffect(() => { cargar(); }, [perfilId]);
@@ -44,7 +46,7 @@ export default function Comentarios({ perfilId, apodo, userId, esMio, onVerPerfi
     const { error } = await supabase.from("perfil_comentarios").insert({
       perfil_id: perfilId, autor_id: userId, texto: texto || null, gif_url: gif_url || null, padre_id: padre,
     });
-    if (error) return "No se pudo publicar. Probá de nuevo.";
+    if (error) return `No se pudo publicar (${error.message}).`;
     if (padre) { setAbiertos(new Set([...abiertos, padre])); setRespondiendo(null); }
     await cargar();
     return null;
@@ -108,10 +110,11 @@ export default function Comentarios({ perfilId, apodo, userId, esMio, onVerPerfi
   return (
     <section className="space-y-3">
       <h3 className="font-extrabold">Comentarios{items.length > 0 && ` (${items.length})`}</h3>
-      {!esMio && <Compositor placeholder={`Dejale un comentario a ${apodo}`} onEnviar={publicar(null)} />}
+      <Compositor placeholder={esMio ? "Escribí algo en tu perfil" : `Dejale un comentario a ${apodo}`} onEnviar={publicar(null)} />
       {aviso && <p role="alert" className="text-sm font-semibold text-brasa">{aviso}</p>}
+      {errorCarga && <p role="alert" className="text-sm font-semibold text-brasa">{errorCarga}</p>}
       {raices.length === 0 ? (
-        <p className="text-tinta/70">{esMio ? "Todavía nadie te dejó comentarios." : "Todavía no hay comentarios. Escribí el primero."}</p>
+        <p className="text-tinta/70">{esMio ? "Todavía no hay comentarios en tu perfil." : "Todavía no hay comentarios. Escribí el primero."}</p>
       ) : (
         <ul className="space-y-2">
           {raices.map((c) => {

@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { input } from "./ui";
 
 // Clave de GIPHY (developers.giphy.com). Va en .env como VITE_GIPHY_KEY.
-const KEY = import.meta.env.VITE_GIPHY_KEY;
-export const hayGifs = Boolean(KEY);
+const KEY_PROPIA = import.meta.env.VITE_GIPHY_KEY;
+const KEY = KEY_PROPIA || "dc6zaTOxFJmzC"; // clave pública de prueba de GIPHY: sirve para desarrollar, no para producción
 
 const BASE = "https://api.giphy.com/v1/gifs";
 const cache = new Map(); // la clave beta permite pocas consultas por hora: no repetimos las mismas
@@ -38,7 +38,7 @@ export default function GifPicker({ onElegir, onCerrar }) {
         setRes(items);
         setError("");
       } catch (e) {
-        if (e.name !== "AbortError") setError("No se pudieron cargar los GIFs. Probá de nuevo en un rato.");
+        if (e.name !== "AbortError") setError(e.message === "429" ? "GIPHY recibió demasiadas consultas por ahora. Probá en un rato." : !KEY_PROPIA ? "No se pudieron cargar los GIFs. Falta configurar VITE_GIPHY_KEY (clave gratis de developers.giphy.com)." : "No se pudieron cargar los GIFs. Probá de nuevo en un rato.");
       }
     }, t ? 500 : 0);
     return () => { clearTimeout(espera); ctl.abort(); };
