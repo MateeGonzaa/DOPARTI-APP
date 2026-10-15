@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Chakra Petch", "Archivo", system-ui, sans-serif;
+
+  /* Cancha de noche */
+  --color-fondo: #08140e;
+  --color-panel: #0f2118;
+  --color-panel-alto: #173326;
+  --color-tinta: #e8f2ea;
+
+  /* Verdes: pasto para botones (texto blanco), césped claro para texto y brillos */
+  --color-pasto: #15803d;
+  --color-cesped: #5fe08d;
+
+  /* Pecheras: naranja y celeste con contraste AA para texto blanco; brasa es el naranja claro para texto */
+  --color-naranja: #cb4b0d;
+  --color-brasa: #ff8f5a;
+  --color-celeste: #1c78b8;
+
+  --radius-lg: 0.75rem;
+  --radius-2xl: 1.25rem;
+}
+
+@layer base {
+  :root { color-scheme: dark; }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background: var(--color-fondo);
+    color: var(--color-tinta);
+    line-height: 1.5;
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* La cancha vista desde arriba, muy tenue, detrás de todo */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.07;
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 800' fill='none' stroke='white' stroke-width='2'%3E%3Crect x='20' y='20' width='360' height='760'/%3E%3Cpath d='M20 400h360'/%3E%3Ccircle cx='200' cy='400' r='50'/%3E%3Crect x='110' y='20' width='180' height='90'/%3E%3Crect x='110' y='690' width='180' height='90'/%3E%3Crect x='160' y='20' width='80' height='35'/%3E%3Crect x='160' y='745' width='80' height='35'/%3E%3C/svg%3E")
+      center / auto 100vh no-repeat;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+  p { text-wrap: pretty; }
+
+  ::selection { background: color-mix(in oklab, var(--color-cesped) 30%, transparent); }
+  input::placeholder { color: color-mix(in oklab, var(--color-tinta) 45%, transparent); }
+
+  button, select, label[for], input[type="file"], input[type="date"], input[type="time"] { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+
+  button, a, input, select {
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+      opacity 0.15s ease, transform 0.1s ease, box-shadow 0.2s ease;
+  }
+  button:not(:disabled):active { transform: scale(0.98); }
+
+  /* Superficies: borde interior finísimo, sin afectar el tamaño */
+  .bg-panel { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08); }
+
+  /* Botones primarios con brillo al pasar el mouse */
+  .bg-pasto:is(button, a):not(:disabled):hover { box-shadow: 0 0 24px -6px var(--color-cesped); }
+
+  gmp-place-autocomplete { display: block; width: 100%; color-scheme: dark; }
+}
+
+/* ---------- Animaciones de fútbol ---------- */
+
+/* El balón entra rodando junto al logo (una sola vez al cargar) */
+@keyframes rodar {
+  from { transform: translateX(-2.5rem) rotate(-360deg); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.balon-rueda { animation: rodar 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+/* Pantalla de carga: balón que pica y su sombra */
+@keyframes pique {
+  0%, 100% { transform: translateY(0); animation-timing-function: cubic-bezier(0.3, 0, 0.8, 0.6); }
+  50%      { transform: translateY(-1.5rem); animation-timing-function: cubic-bezier(0.2, 0.4, 0.7, 1); }
+}
+@keyframes sombra {
+  0%, 100% { transform: scaleX(1); opacity: 0.4; }
+  50%      { transform: scaleX(0.55); opacity: 0.15; }
+}
+.balon-pique { animation: pique 0.8s infinite; }
+.sombra-balon {
+  display: block; width: 1.75rem; height: 0.4rem; border-radius: 50%;
+  background: #000; animation: sombra 0.8s infinite;
+}
+
+/* Los equipos aparecen escalonados cuando sale el sorteo */
+@keyframes equipo-entra {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+.equipo-entra { animation: equipo-entra 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.equipo-entra:nth-child(2) { animation-delay: 0.15s; }
+
+/* Aviso de cupo completo */
+@keyframes latido {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(95 224 141 / 0.45); }
+  60%      { box-shadow: 0 0 0 8px rgb(95 224 141 / 0); }
+}
+.cupo-completo { animation: latido 2.2s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+  button:not(:disabled):active { transform: none; }
+}
