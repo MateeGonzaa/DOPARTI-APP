@@ -20,6 +20,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
   const [zonas, setZonas] = useState([]);
   const [ajustes, setAjustes] = useState({ nombre: comunidad.nombre, zona_id: comunidad.zona_id ?? "", whatsapp_link: comunidad.whatsapp_link ?? "" });
   const [aviso, setAviso] = useState("");
+  const [errorPartido, setErrorPartido] = useState("");
 
   const cargar = async () => {
     const [a, b] = await Promise.all([
@@ -44,10 +45,14 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
   }, [comunidad.id]);
 
   const crearPartido = async () => {
-    const datos = { ...f, sede: f.sede.trim(), sede_direccion: f.sede_direccion.trim(), comunidad_id: comunidad.id };
-    if (f.a_coordinar) { datos.fecha = null; datos.hora = null; }
-    const { data } = await supabase.from("partidos").insert(datos).select().single();
-    if (data) onAbrirPartido(data.id);
+    setErrorPartido("");
+    const { a_coordinar, ...base } = f;
+    const datos = { ...base, sede: f.sede.trim(), sede_direccion: f.sede_direccion.trim(), comunidad_id: comunidad.id };
+    // a_coordinar solo se manda cuando se usa, así los partidos con fecha no dependen de esa columna.
+    if (a_coordinar) Object.assign(datos, { a_coordinar: true, fecha: null, hora: null });
+    const { data, error } = await supabase.from("partidos").insert(datos).select().single();
+    if (error) return setErrorPartido(`No se pudo crear el partido: ${error.message}`);
+    onAbrirPartido(data.id);
   };
   const agregarSede = async () => {
     await supabase.from("sedes").insert({ nombre: sede.nombre.trim(), direccion: sede.direccion.trim(), comunidad_id: comunidad.id });
@@ -126,6 +131,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
             <input className={input} placeholder="Nombre de la cancha" value={f.sede} onChange={setCampo("sede")} />
             <input className={input} placeholder="Dirección (opcional)" value={f.sede_direccion} onChange={setCampo("sede_direccion")} />
           </div>
+          {errorPartido && <p role="alert" className="text-sm font-semibold text-brasa">{errorPartido}</p>}
           <div className="flex gap-2">
             <button disabled={(!f.a_coordinar && (!f.fecha || !f.hora)) || !f.sede.trim()} onClick={crearPartido} className={`${btn} bg-pasto text-white disabled:opacity-40`}>Crear partido</button>
             <button onClick={() => setCreando(false)} className={`${btn} bg-panel-alto`}>Cancelar</button>

@@ -8,6 +8,8 @@ export default function PerfilPublico({ id, userId, onVolver }) {
   const [comentarios, setComentarios] = useState([]);
   const [texto, setTexto] = useState("");
   const [error, setError] = useState("");
+  const [amistad, setAmistad] = useState(undefined);
+  const [comunes, setComunes] = useState([]);
   const esMio = id === userId;
 
   const cargarComentarios = async () => {
@@ -19,7 +21,24 @@ export default function PerfilPublico({ id, userId, onVolver }) {
     setComentarios(data ?? []);
   };
 
+  const cargarAmistad = async () => {
+    if (esMio) return;
+    const { data } = await supabase.from("amistades").select("id, solicitante_id, estado")
+      .or(`and(solicitante_id.eq.${userId},destinatario_id.eq.${id}),and(solicitante_id.eq.${id},destinatario_id.eq.${userId})`)
+      .maybeSingle();
+    setAmistad(data ?? null);
+  };
+  const pedirAmistad = async () => { await supabase.from("amistades").insert({ solicitante_id: userId, destinatario_id: id }); cargarAmistad(); };
+  const responder = async (aceptar) => { await supabase.rpc("responder_solicitud", { p_id: amistad.id, p_aceptar: aceptar }); cargarAmistad(); };
+  const quitarAmistad = async () => {
+    if (amistad.estado === "aceptada" && !window.confirm(`¿Quitar a ${perfil.apodo} de tus amigos?`)) return;
+    await supabase.from("amistades").delete().eq("id", amistad.id);
+    cargarAmistad();
+  };
+
   useEffect(() => {
+    cargarAmistad();
+    if (!esMio) supabase.rpc("amigos_en_comun", { p_uid: id }).then(({ data }) => setComunes(data ?? []));
     supabase.from("profiles").select("*").eq("id", id).maybeSingle().then(({ data }) => setPerfil(data ?? null));
     supabase.rpc("partidos_jugados", { p_uid: id }).then(({ data }) => setJugados(data ?? 0));
     cargarComentarios();
@@ -69,6 +88,35 @@ export default function PerfilPublico({ id, userId, onVolver }) {
         <ul className="flex flex-wrap gap-2">
           {datos.map((d) => <li key={d} className="rounded-full bg-panel px-3 py-1 text-sm font-semibold">{d}</li>)}
         </ul>
+      )}
+
+      {!esMio && amistad !== undefined && (
+        <div className="space-y-2">
+          {amistad === null && <button onClick={pedirAmistad} className={`${btn} bg-pasto text-white`}>Agregar amigo</button>}
+          {amistad?.estado === "aceptada" && (
+            <div className="flex items-center gap-3">
+              <span className="font-semibold text-cesped">Son amigos</span>
+              <button onClick={quitarAmistad} className="text-sm font-semibold text-brasa">Quitar</button>
+            </div>
+          )}
+          {amistad?.estado === "pendiente" && amistad.solicitante_id === userId && (
+            <div className="flex items-center gap-3">
+              <span className="text-tinta/70">Solicitud enviada</span>
+              <button onClick={quitarAmistad} className="text-sm font-semibold text-brasa">Cancelar</button>
+            </div>
+          )}
+          {amistad?.estado === "pendiente" && amistad.solicitante_id !== userId && (
+            <div className="flex gap-2">
+              <button onClick={() => responder(true)} className={`${btn} bg-pasto text-white`}>Aceptar solicitud</button>
+              <button onClick={() => responder(false)} className={`${btn} bg-panel text-brasa`}>Rechazar</button>
+            </div>
+          )}
+          {comunes.length > 0 && (
+            <p className="text-sm text-tinta/70">
+              {comunes.length} {comunes.length === 1 ? "amigo en común" : "amigos en común"}: {comunes.map((c) => c.apodo).join(", ")}
+            </p>
+          )}
+        </div>
       )}
 
       <Nivel jugados={jugados} />

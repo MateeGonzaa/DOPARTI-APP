@@ -31,6 +31,7 @@ export default function Menu({ abierto, onCerrar, perfil, items }) {
           <button key={it.texto} onClick={() => { onCerrar(); it.onClick(); }}
             className={`flex min-h-12 items-center rounded-lg px-3 text-left font-semibold hover:bg-panel-alto ${it.peligro ? "mt-auto text-brasa" : ""}`}>
             {it.texto}
+            {it.insignia > 0 && <span className="ml-2 rounded-full bg-naranja px-2 text-sm text-white">{it.insignia}</span>}
           </button>
         ))}
       </nav>

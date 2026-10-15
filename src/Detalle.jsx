@@ -17,6 +17,7 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
   const [p, setP] = useState(null);
   const [nueva, setNueva] = useState({ fecha: "", hora: "" });
   const [aviso, setAviso] = useState("");
+  const [amigosIds, setAmigosIds] = useState(new Set());
 
   const cargar = async () => {
     const { data } = await supabase
@@ -28,6 +29,11 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
     setP(data);
   };
   useEffect(() => { cargar(); }, [id]);
+  useEffect(() => {
+    supabase.from("amistades").select("solicitante_id, destinatario_id").eq("estado", "aceptada").then(({ data }) => {
+      setAmigosIds(new Set((data ?? []).map((a) => (a.solicitante_id === userId ? a.destinatario_id : a.solicitante_id))));
+    });
+  }, [userId]);
   if (!p) return <Cargando texto="Cargando partido…" />;
 
   const ins = p.inscripciones;
@@ -82,6 +88,7 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
     <li>
       <button onClick={() => onVerPerfil(i.usuario_id)} className="flex w-full items-center gap-2 rounded-lg bg-panel px-3 py-2 text-left hover:bg-panel-alto">
         <Avatar perfil={i.profiles} size={28} />{n}. {i.profiles?.apodo}
+        {amigosIds.has(i.usuario_id) && <span className="ml-auto rounded-full bg-pasto/30 px-2 text-xs font-semibold text-cesped">Amigo</span>}
       </button>
     </li>
   );
