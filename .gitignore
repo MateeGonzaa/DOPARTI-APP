@@ -1,7 +1,10 @@
 node_modules
 dist
-.env
 .vercel
-.envlocal
-.envexample
-.superbase
+.env
+.env.local
+.env.*.local
+.env.example
+supabase/
+*.sql
+*.dump
