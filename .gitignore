@@ -8,3 +8,5 @@ dist
 supabase/
 *.sql
 *.dump
+*.log
+.DS_Store
