@@ -39,11 +39,11 @@ function PedirCiudad() {
   );
 }
 
-export default function Explorar({ onVolver, onAbrir, onCrear }) {
+export default function Explorar({ onVolver, onAbrir, onCrear, deporteInicial = "" }) {
   const [zonas, setZonas] = useState([]);
   const [filtro, setFiltro] = useState({ pais: "", provincia: "", zonaId: "" });
   const [texto, setTexto] = useState("");
-  const [deporte, setDeporte] = useState("");
+  const [deporte, setDeporte] = useState(deporteInicial);
   const [orden, setOrden] = useState("activas");
   const [pos, setPos] = useState(null);
   const [aviso, setAviso] = useState("");

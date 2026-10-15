@@ -30,6 +30,7 @@ export default function App() {
   const [verActividad, setVerActividad] = useState(false);
   const [actPend, setActPend] = useState(0);
   const [verExplorar, setVerExplorar] = useState(false);
+  const [explorarDeporte, setExplorarDeporte] = useState("");
 
   const cargarPerfil = async (uid) => {
     const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
@@ -85,6 +86,16 @@ export default function App() {
   const limpiar = () => { setPerfilId(null); setVerPerfil(false); setVerAmigos(false); setVerInvitaciones(false); setVerActividad(false); setVerExplorar(false); };
   const inicio = () => { limpiar(); setComunidad(null); setPartidoId(null); };
   const totalPend = pendientes + invitPend + actPend;
+  const irExplorar = (deporte = "") => { limpiar(); setComunidad(null); setPartidoId(null); setExplorarDeporte(deporte); setVerExplorar(true); };
+  const arriba = (fn) => () => { fn(); window.scrollTo({ top: 0 }); };
+  const seccionesFooter = [
+    { texto: "Mis comunidades", onClick: arriba(inicio) },
+    { texto: "Explorar", onClick: arriba(() => irExplorar()) },
+    { texto: "Amigos", onClick: arriba(() => { limpiar(); setVerAmigos(true); }) },
+    { texto: "Invitaciones", onClick: arriba(() => { limpiar(); setVerInvitaciones(true); }) },
+    { texto: "Actividad", onClick: arriba(() => { limpiar(); setVerActividad(true); }) },
+    { texto: "Mi perfil", onClick: arriba(() => { limpiar(); setPerfilId(sesion.user.id); }) },
+  ];
 
   return (
     <div className="mx-auto max-w-xl space-y-5 p-4 pb-10 sm:space-y-6 sm:p-5">
@@ -112,7 +123,7 @@ export default function App() {
         <Invitaciones userId={sesion.user.id} onVolver={() => setVerInvitaciones(false)} onCambio={cargarPendientes}
           onAbrirPartido={(id) => { setVerInvitaciones(false); setPartidoId(id); }} />
       ) : verExplorar ? (
-        <Explorar onVolver={() => setVerExplorar(false)} onAbrir={(c) => { limpiar(); setPartidoId(null); setComunidad(c); }} onCrear={() => { limpiar(); setComunidad(null); }} />
+        <Explorar key={explorarDeporte} deporteInicial={explorarDeporte} onVolver={() => setVerExplorar(false)} onAbrir={(c) => { limpiar(); setPartidoId(null); setComunidad(c); }} onCrear={() => { limpiar(); setComunidad(null); }} />
       ) : verActividad ? (
         <Actividad userId={sesion.user.id} onVolver={() => setVerActividad(false)} onVerPerfil={setPerfilId} onCambio={cargarPendientes} />
       ) : partidoId ? (
@@ -121,13 +132,13 @@ export default function App() {
         <Comunidad comunidad={comunidad} userId={sesion.user.id} onCambio={setComunidad} onVolver={() => setComunidad(null)}
           onAbrirPartido={setPartidoId} onVerPerfil={setPerfilId} />
       ) : (
-        <Comunidades onAbrir={setComunidad} userId={sesion.user.id} onAbrirPartido={setPartidoId} onExplorar={() => setVerExplorar(true)} />
+        <Comunidades onAbrir={setComunidad} userId={sesion.user.id} onAbrirPartido={setPartidoId} onExplorar={() => irExplorar()} />
       )}
 
       <Menu abierto={menu} onCerrar={() => setMenu(false)} perfil={perfil}
         items={[
           { texto: "Mis comunidades", onClick: inicio },
-          { texto: "Explorar comunidades", onClick: () => { limpiar(); setComunidad(null); setPartidoId(null); setVerExplorar(true); } },
+          { texto: "Explorar comunidades", onClick: () => irExplorar() },
           { texto: "Mi perfil", onClick: () => { limpiar(); setPerfilId(sesion.user.id); } },
           { texto: "Amigos", insignia: pendientes, onClick: () => { limpiar(); setVerAmigos(true); } },
           { texto: "Invitaciones", insignia: invitPend, onClick: () => { limpiar(); setVerInvitaciones(true); } },
@@ -135,7 +146,7 @@ export default function App() {
           { texto: "Salir", onClick: () => supabase.auth.signOut(), peligro: true },
         ]} />
 
-      <Footer />
+      <Footer secciones={seccionesFooter} onDeporte={(d) => { irExplorar(d); window.scrollTo({ top: 0 }); }} />
     </div>
   );
 }

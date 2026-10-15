@@ -7,6 +7,7 @@ export const AUTOR = {
   portafolio: "https://mi-portafolio-mateo-gonzalez.vercel.app/",
   github: "",
   linkedin: "",
+  instagram: "",
   email: "",
   desde: 2026, // año de la primera publicación
   version: "Beta v1",
