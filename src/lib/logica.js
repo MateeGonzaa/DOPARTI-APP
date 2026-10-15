@@ -10,6 +10,8 @@ export function sortear(ids, tipo) {
 }
 
 export const cuando = (p) =>
-  new Date(`${p.fecha}T${p.hora}`).toLocaleString("es-AR", {
-    weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
-  });
+  p.a_coordinar || !p.fecha || !p.hora
+    ? "Fecha y hora a coordinar"
+    : new Date(`${p.fecha}T${p.hora}`).toLocaleString("es-AR", {
+        weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+      });

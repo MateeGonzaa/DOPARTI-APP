@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
-import { btn, Avatar, Cargando } from "./ui";
+import { btn, input, Avatar, Cargando } from "./ui";
 import { cupo, cuando, sortear } from "./lib/logica";
 import { convocatoria, equiposMsg, faltanMsg } from "./lib/mensajes";
 
@@ -15,11 +15,13 @@ function Equipo({ nombre, color, ids, quien }) {
 
 export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
   const [p, setP] = useState(null);
+  const [nueva, setNueva] = useState({ fecha: "", hora: "" });
+  const [aviso, setAviso] = useState("");
 
   const cargar = async () => {
     const { data } = await supabase
       .from("partidos")
-      .select("*, inscripciones(id, usuario_id, created_at, profiles(apodo, avatar_url))")
+      .select("*, comunidades(whatsapp_link), inscripciones(id, usuario_id, created_at, profiles(apodo, avatar_url))")
       .eq("id", id)
       .single();
     if (data) data.inscripciones.sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -62,6 +64,19 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
   }
 
   const wa = (texto) => `https://wa.me/?text=${encodeURIComponent(texto)}`;
+  async function definirFecha() {
+    await supabase.from("partidos").update({ fecha: nueva.fecha, hora: nueva.hora, a_coordinar: false }).eq("id", p.id);
+    cargar();
+  }
+  // WhatsApp no deja elegir un grupo desde un link: copiamos el mensaje y abrimos el grupo para pegarlo.
+  function compartir(texto) {
+    const grupo = p.comunidades?.whatsapp_link;
+    if (!grupo) return window.open(wa(texto), "_blank", "noopener");
+    navigator.clipboard.writeText(texto)
+      .then(() => setAviso("Mensaje copiado. Pegalo en el grupo."))
+      .catch(() => setAviso("No pudimos copiar el mensaje."));
+    window.open(grupo, "_blank", "noopener");
+  }
   const nombre = (uid) => quien(uid)?.apodo ?? "?";
   const Fila = ({ i, n }) => (
     <li>
@@ -79,6 +94,17 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
         <p className="capitalize">{cuando(p)}</p>
         <p>{p.sede}{p.sede_direccion && ` — ${p.sede_direccion}`}</p>
       </header>
+
+      {p.a_coordinar && p.creado_por === userId && (
+        <div className="space-y-2 rounded-2xl bg-panel p-4">
+          <p className="text-sm font-semibold">Cuando lo coordinen, definí la fecha y hora:</p>
+          <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
+            <input type="date" aria-label="Fecha" className={input} value={nueva.fecha} onChange={(e) => setNueva({ ...nueva, fecha: e.target.value })} />
+            <input type="time" aria-label="Hora" className={input} value={nueva.hora} onChange={(e) => setNueva({ ...nueva, hora: e.target.value })} />
+          </div>
+          <button disabled={!nueva.fecha || !nueva.hora} onClick={definirFecha} className={`${btn} bg-pasto text-white disabled:opacity-40`}>Definir fecha y hora</button>
+        </div>
+      )}
 
       <div>
         <div className="mb-1 flex justify-between text-sm font-semibold">
@@ -126,12 +152,13 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
       )}
 
       <div className="grid gap-2 pt-2 sm:flex sm:flex-wrap">
-        <a href={wa(convocatoria(p, titulares.length))} target="_blank" rel="noreferrer" className={`${btn} bg-pasto text-white`}>Compartir convocatoria</a>
-        {!completo && <a href={wa(faltanMsg(p, titulares.length))} target="_blank" rel="noreferrer" className={`${btn} bg-panel`}>Avisar que faltan jugadores</a>}
-        {p.equipos && <a href={wa(equiposMsg(p, nombre))} target="_blank" rel="noreferrer" className={`${btn} bg-pasto text-white`}>Compartir equipos</a>}
+        <button onClick={() => compartir(convocatoria(p, titulares.length))} className={`${btn} bg-pasto text-white`}>Compartir convocatoria</button>
+        {!completo && <button onClick={() => compartir(faltanMsg(p, titulares.length))} className={`${btn} bg-panel`}>Avisar que faltan jugadores</button>}
+        {p.equipos && <button onClick={() => compartir(equiposMsg(p, nombre))} className={`${btn} bg-pasto text-white`}>Compartir equipos</button>}
         <button onClick={cargar} className={`${btn} bg-panel`}>Actualizar</button>
         {p.creado_por === userId && <button onClick={eliminar} className={`${btn} bg-panel text-brasa`}>Eliminar partido</button>}
       </div>
+      {aviso && <p role="status" className="text-sm font-semibold text-cesped">{aviso}</p>}
     </div>
   );
 }

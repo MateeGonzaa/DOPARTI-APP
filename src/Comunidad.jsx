@@ -13,12 +13,12 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
   const [miembros, setMiembros] = useState([]);
   const [filtro, setFiltro] = useState("todos");
   const [creando, setCreando] = useState(false);
-  const [f, setF] = useState({ tipo: 7, fecha: "", hora: "", sede: "", sede_direccion: "" });
+  const [f, setF] = useState({ tipo: 7, fecha: "", hora: "", sede: "", sede_direccion: "", a_coordinar: false });
   const [sede, setSede] = useState(SEDE_VACIA);
   const [copiado, setCopiado] = useState(false);
   const [esAdmin, setEsAdmin] = useState(false);
   const [zonas, setZonas] = useState([]);
-  const [ajustes, setAjustes] = useState({ nombre: comunidad.nombre, zona_id: comunidad.zona_id ?? "" });
+  const [ajustes, setAjustes] = useState({ nombre: comunidad.nombre, zona_id: comunidad.zona_id ?? "", whatsapp_link: comunidad.whatsapp_link ?? "" });
   const [aviso, setAviso] = useState("");
 
   const cargar = async () => {
@@ -44,7 +44,9 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
   }, [comunidad.id]);
 
   const crearPartido = async () => {
-    const { data } = await supabase.from("partidos").insert({ ...f, sede: f.sede.trim(), sede_direccion: f.sede_direccion.trim(), comunidad_id: comunidad.id }).select().single();
+    const datos = { ...f, sede: f.sede.trim(), sede_direccion: f.sede_direccion.trim(), comunidad_id: comunidad.id };
+    if (f.a_coordinar) { datos.fecha = null; datos.hora = null; }
+    const { data } = await supabase.from("partidos").insert(datos).select().single();
     if (data) onAbrirPartido(data.id);
   };
   const agregarSede = async () => {
@@ -54,8 +56,10 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
   };
   const borrarSede = async (id) => { await supabase.from("sedes").delete().eq("id", id); cargar(); };
   const guardarAjustes = async () => {
+    const wsp = ajustes.whatsapp_link.trim();
+    if (wsp && !wsp.startsWith("https://chat.whatsapp.com/")) return setAviso("El link del grupo debe empezar con https://chat.whatsapp.com/");
     const { data, error } = await supabase.from("comunidades")
-      .update({ nombre: ajustes.nombre.trim(), zona_id: ajustes.zona_id || null })
+      .update({ nombre: ajustes.nombre.trim(), zona_id: ajustes.zona_id || null, whatsapp_link: wsp || null })
       .eq("id", comunidad.id).select("*, zonas(nombre, provincia, lat, lng)").single();
     if (error) return setAviso("No se pudieron guardar los cambios.");
     onCambio(data);
@@ -81,6 +85,9 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
       <div>
         <h2 className="break-words text-3xl font-extrabold">{comunidad.nombre}</h2>
         {comunidad.zonas && <p className="text-tinta/70">{comunidad.zonas.nombre}, {comunidad.zonas.provincia}</p>}
+        {comunidad.whatsapp_link && (
+          <a href={comunidad.whatsapp_link} target="_blank" rel="noreferrer" className={`${btn} mt-3 bg-panel text-cesped`}>Abrir grupo de WhatsApp</a>
+        )}
       </div>
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
         {[["partidos", "Partidos"], ["sedes", "Sedes"], ["miembros", "Miembros"], ["invitar", "Invitar"], ...(esAdmin ? [["ajustes", "Ajustes"]] : [])].map(([k, t]) => (
@@ -95,10 +102,16 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
               <button key={t} onClick={() => setF({ ...f, tipo: t })} className={`${btn} flex-1 ${f.tipo === t ? "bg-pasto text-white" : "bg-panel-alto"}`}>Fútbol {t}</button>
             ))}
           </div>
-          <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
-            <label className="text-sm font-semibold">Fecha<input type="date" className={input} value={f.fecha} onChange={setCampo("fecha")} /></label>
-            <label className="text-sm font-semibold">Hora<input type="time" className={input} value={f.hora} onChange={setCampo("hora")} /></label>
-          </div>
+          <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+            <input type="checkbox" className="size-5 accent-pasto" checked={f.a_coordinar} onChange={(e) => setF({ ...f, a_coordinar: e.target.checked })} />
+            Fecha y hora a coordinar con el grupo
+          </label>
+          {!f.a_coordinar && (
+            <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
+              <label className="text-sm font-semibold">Fecha<input type="date" className={input} value={f.fecha} onChange={setCampo("fecha")} /></label>
+              <label className="text-sm font-semibold">Hora<input type="time" className={input} value={f.hora} onChange={setCampo("hora")} /></label>
+            </div>
+          )}
           <div className="space-y-2">
             <span className="text-sm font-semibold">Sede</span>
             {sedes.length > 0 && (
@@ -114,7 +127,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
             <input className={input} placeholder="Dirección (opcional)" value={f.sede_direccion} onChange={setCampo("sede_direccion")} />
           </div>
           <div className="flex gap-2">
-            <button disabled={!f.fecha || !f.hora || !f.sede.trim()} onClick={crearPartido} className={`${btn} bg-pasto text-white disabled:opacity-40`}>Crear partido</button>
+            <button disabled={(!f.a_coordinar && (!f.fecha || !f.hora)) || !f.sede.trim()} onClick={crearPartido} className={`${btn} bg-pasto text-white disabled:opacity-40`}>Crear partido</button>
             <button onClick={() => setCreando(false)} className={`${btn} bg-panel-alto`}>Cancelar</button>
           </div>
         </div>
@@ -198,6 +211,10 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
               {zonas.map((z) => <option key={z.id} value={z.id}>{z.nombre}, {z.provincia}</option>)}
             </select>
           </label>
+          <label className="block text-sm font-semibold">Link del grupo de WhatsApp (opcional)
+            <input className={input} inputMode="url" placeholder="https://chat.whatsapp.com/..." value={ajustes.whatsapp_link} onChange={(e) => setAjustes({ ...ajustes, whatsapp_link: e.target.value })} />
+          </label>
+          <p className="-mt-2 text-sm text-tinta/70">En WhatsApp: abrí el grupo, Info del grupo, Invitar al grupo mediante enlace, Copiar enlace.</p>
           <button disabled={!ajustes.nombre.trim()} onClick={guardarAjustes} className={`${btn} bg-pasto text-white disabled:opacity-40`}>Guardar cambios</button>
           {aviso && <p className="text-sm font-semibold text-cesped">{aviso}</p>}
           <div className="border-t border-tinta/15 pt-4">
