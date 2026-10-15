@@ -89,7 +89,7 @@ export default function App() {
       ) : verAmigos ? (
         <Amigos userId={sesion.user.id} onVolver={() => setVerAmigos(false)} onVerPerfil={setPerfilId} onCambio={cargarPendientes} />
       ) : verInvitaciones ? (
-        <Invitaciones onVolver={() => setVerInvitaciones(false)} onCambio={cargarPendientes}
+        <Invitaciones userId={sesion.user.id} onVolver={() => setVerInvitaciones(false)} onCambio={cargarPendientes}
           onAbrirPartido={(id) => { setVerInvitaciones(false); setPartidoId(id); }} />
       ) : partidoId ? (
         <Detalle id={partidoId} userId={sesion.user.id} onVolver={() => setPartidoId(null)} onVerPerfil={setPerfilId} />

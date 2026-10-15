@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input, Avatar, Cargando, Nivel, nombrePie } from "./ui";
+import InvitarAPartido from "./InvitarAPartido";
 
 export default function PerfilPublico({ id, userId, onVolver, onEditar }) {
   const [perfil, setPerfil] = useState(undefined);
@@ -10,6 +11,7 @@ export default function PerfilPublico({ id, userId, onVolver, onEditar }) {
   const [error, setError] = useState("");
   const [amistad, setAmistad] = useState(undefined);
   const [comunes, setComunes] = useState([]);
+  const [invitando, setInvitando] = useState(false);
   const esMio = id === userId;
 
   const cargarComentarios = async () => {
@@ -96,8 +98,9 @@ export default function PerfilPublico({ id, userId, onVolver, onEditar }) {
         <div className="space-y-2">
           {amistad === null && <button onClick={pedirAmistad} className={`${btn} bg-pasto text-white`}>Agregar amigo</button>}
           {amistad?.estado === "aceptada" && (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <span className="font-semibold text-cesped">Son amigos</span>
+              <button onClick={() => setInvitando(true)} className={`${btn} bg-pasto text-white`}>Invitar a un partido</button>
               <button onClick={quitarAmistad} className="text-sm font-semibold text-brasa">Quitar</button>
             </div>
           )}
@@ -158,6 +161,7 @@ export default function PerfilPublico({ id, userId, onVolver, onEditar }) {
           </ul>
         )}
       </section>
+      {invitando && <InvitarAPartido amigo={perfil} userId={userId} onCerrar={() => setInvitando(false)} />}
     </div>
   );
 }

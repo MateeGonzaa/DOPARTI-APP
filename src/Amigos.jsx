@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input, Avatar } from "./ui";
+import InvitarAPartido from "./InvitarAPartido";
 
 const PERFIL = "id, apodo, nombre_completo, avatar_url";
 
@@ -25,6 +26,7 @@ export default function Amigos({ userId, onVolver, onVerPerfil, onCambio }) {
   const [q, setQ] = useState("");
   const [res, setRes] = useState(null);
   const [buscando, setBuscando] = useState(false);
+  const [invitando, setInvitando] = useState(null);
 
   const cargar = async () => {
     const { data } = await supabase
@@ -76,6 +78,7 @@ export default function Amigos({ userId, onVolver, onVerPerfil, onCambio }) {
         ? <p className="text-tinta/70">Todavía no tenés amigos. Buscalos por apodo o entrá al perfil de alguien de tu comunidad.</p>
         : <ul className="space-y-2">{amigos.map((f) => (
             <Persona key={f.id} p={otro(f)} onVer={onVerPerfil}>
+              <button onClick={() => setInvitando(otro(f))} className={`${btn} min-h-9 bg-pasto px-3 py-1 text-sm text-white`}>Invitar</button>
               <button onClick={() => quitar(f)} className="px-2 py-2 text-sm font-semibold text-brasa">Quitar</button>
             </Persona>
           ))}</ul>)}
@@ -129,6 +132,7 @@ export default function Amigos({ userId, onVolver, onVerPerfil, onCambio }) {
           ))}
         </div>
       )}
+      {invitando && <InvitarAPartido amigo={invitando} userId={userId} onCerrar={() => setInvitando(null)} />}
     </div>
   );
 }
