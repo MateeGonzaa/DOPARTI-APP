@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input, Avatar } from "./ui";
 import { hace } from "./Comentarios";
+import GifPicker from "./GifPicker";
+import SelectorEmoji from "./SelectorEmoji";
 
 // Chat en vivo sobre un canal de la tabla `mensajes`. Sirve para comunidades, mensajes privados y partidas de Truco.
 // `alto` controla la altura de la lista: en la partida de Truco es fija, en pantallas completas ocupa el resto.
@@ -9,6 +11,8 @@ export default function Chat({ canal, userId, onVerPerfil, alto = "h-[min(60dvh,
   const [msgs, setMsgs] = useState(null);
   const [texto, setTexto] = useState("");
   const [error, setError] = useState("");
+  const [panel, setPanel] = useState(null); // "emoji" | "gif" | null
+  const campo = useRef(null);
   const perfiles = useRef(new Map());
   const fin = useRef(null);
   const lista = useRef(null);
@@ -53,15 +57,31 @@ export default function Chat({ canal, userId, onVerPerfil, alto = "h-[min(60dvh,
     if (cerca || msgs?.at(-1)?.autor_id === userId) el.scrollTop = el.scrollHeight;
   }, [msgs]);
 
-  async function enviar(e) {
-    e.preventDefault();
-    const t = texto.trim();
-    if (!t) return;
-    setTexto("");
+  async function mandar({ texto: t = "", gif = null }) {
+    const limpio = t.trim();
+    if (!limpio && !gif) return;
     setError("");
-    const { data, error: err } = await supabase.from("mensajes").insert({ canal, texto: t }).select().single();
-    if (err) { setTexto(t); return setError("No se pudo enviar el mensaje."); }
+    const { data, error: err } = await supabase.from("mensajes").insert({ canal, texto: limpio || null, gif_url: gif }).select().single();
+    if (err) { if (!gif) setTexto(t); return setError("No se pudo enviar el mensaje."); }
     if (data) setMsgs((xs) => (xs && !xs.some((x) => x.id === data.id) ? [...xs, data] : xs));
+  }
+
+  function enviar(e) {
+    e.preventDefault();
+    const t = texto;
+    if (!t.trim()) return;
+    setTexto("");
+    mandar({ texto: t });
+  }
+
+  function insertar(emoji) {
+    const el = campo.current;
+    const ini = el?.selectionStart ?? texto.length;
+    const fin = el?.selectionEnd ?? texto.length;
+    const nuevo = texto.slice(0, ini) + emoji + texto.slice(fin);
+    if (nuevo.length > 1000) return;
+    setTexto(nuevo);
+    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(ini + emoji.length, ini + emoji.length); });
   }
 
   const borrar = async (id) => { await supabase.from("mensajes").delete().eq("id", id); setMsgs((xs) => xs.filter((m) => m.id !== id)); };
@@ -84,7 +104,8 @@ export default function Chat({ canal, userId, onVerPerfil, alto = "h-[min(60dvh,
                 </div>
                 <div className={`max-w-[80%] rounded-2xl px-3 py-1.5 ${mio ? "rounded-br-md bg-pasto text-white" : "rounded-bl-md bg-panel-alto"}`}>
                   {!mio && !seguido && <p className="text-xs font-bold text-cesped">{p?.apodo ?? "?"}</p>}
-                  <p className="whitespace-pre-wrap break-words">{m.texto}</p>
+                  {m.texto && <p className="whitespace-pre-wrap break-words">{m.texto}</p>}
+                  {m.gif_url && <img src={m.gif_url} alt="GIF" loading="lazy" onLoad={() => { const el = lista.current; if (el && i === msgs.length - 1) el.scrollTop = el.scrollHeight; }} className="mt-1 max-h-48 max-w-full rounded-lg" />}
                   <p className="mt-0.5 flex items-center justify-end gap-2 text-[11px] opacity-60">
                     {hace(m.created_at)}
                     {mio && <button onClick={() => borrar(m.id)} aria-label="Borrar mensaje" className="hidden font-semibold group-hover:inline focus-visible:inline">Borrar</button>}
@@ -96,8 +117,14 @@ export default function Chat({ canal, userId, onVerPerfil, alto = "h-[min(60dvh,
         <div ref={fin} />
       </div>
       {error && <p role="alert" className="text-sm font-semibold text-brasa">{error}</p>}
+      {panel === "emoji" && <SelectorEmoji onElegir={insertar} />}
+      {panel === "gif" && <GifPicker onCerrar={() => setPanel(null)} onElegir={(u) => { setPanel(null); mandar({ gif: u }); }} />}
       <form onSubmit={enviar} className="flex gap-2">
-        <input className={input} value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={1000} placeholder="Escribí un mensaje" aria-label="Mensaje" autoComplete="off" />
+        <button type="button" aria-pressed={panel === "emoji"} aria-label="Emojis" onClick={() => setPanel(panel === "emoji" ? null : "emoji")}
+          className={`${btn} shrink-0 px-3 text-xl ${panel === "emoji" ? "bg-tinta text-fondo" : "bg-panel"}`}>😊</button>
+        <button type="button" aria-pressed={panel === "gif"} aria-label="GIFs" onClick={() => setPanel(panel === "gif" ? null : "gif")}
+          className={`${btn} shrink-0 px-3 text-sm ${panel === "gif" ? "bg-tinta text-fondo" : "bg-panel"}`}>GIF</button>
+        <input ref={campo} className={input} value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={1000} placeholder="Escribí un mensaje" aria-label="Mensaje" autoComplete="off" />
         <button type="submit" disabled={!texto.trim()} className={`${btn} bg-pasto text-white disabled:opacity-50`}>Enviar</button>
       </form>
     </div>
