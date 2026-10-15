@@ -116,6 +116,19 @@
 }
 .cupo-completo { animation: latido 2.2s ease-out infinite; }
 
+/* Reacciones en vivo (Truco): suben y se desvanecen */
+@keyframes reaccion-flota {
+  0%   { transform: translateY(0) scale(0.6); opacity: 0; }
+  15%  { opacity: 1; transform: translateY(-1rem) scale(1.1); }
+  100% { transform: translateY(-9rem) scale(1); opacity: 0; }
+}
+.reaccion-flota { animation: reaccion-flota 2.4s ease-out forwards; }
+
+/* PC: la cancha de fondo se queda a la derecha en vez de quedar tapada por el contenido ancho */
+@media (min-width: 1024px) {
+  body::before { background-position: right 4vw center; opacity: 0.05; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; animation: none !important; }

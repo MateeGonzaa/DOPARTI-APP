@@ -13,11 +13,11 @@ export default defineConfig({
       manifest: {
         name: "DOPARTI",
         short_name: "DOPARTI",
-        description: "Organizá partidos de fútbol con tus amigos",
+        description: "Organizá partidos, eSports y Truco con tus amigos",
         lang: "es-AR",
         start_url: "/",
         display: "standalone",
-        orientation: "portrait",
+        orientation: "any",
         background_color: "#08140e",
         theme_color: "#08140e",
         icons: [

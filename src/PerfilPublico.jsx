@@ -51,7 +51,7 @@ function Dato({ valor, titulo, color = "" }) {
   );
 }
 
-export default function PerfilPublico({ id, userId, onVolver, onEditar, onVerPerfil }) {
+export default function PerfilPublico({ id, userId, onVolver, onEditar, onVerPerfil, onMensaje }) {
   const [perfil, setPerfil] = useState(undefined);
   const [jugados, setJugados] = useState(0);
   const [stats, setStats] = useState(null);
@@ -168,6 +168,7 @@ export default function PerfilPublico({ id, userId, onVolver, onEditar, onVerPer
 
       {!esMio && amistad !== undefined && (
         <div className="space-y-2">
+          {onMensaje && <button onClick={() => onMensaje(id)} className={`${btn} bg-panel`}>Mensaje</button>}
           {amistad === null && <button onClick={pedirAmistad} className={`${btn} bg-pasto text-white`}>Agregar amigo</button>}
           {amistad?.estado === "aceptada" && (
             <div className="flex flex-wrap items-center gap-3">

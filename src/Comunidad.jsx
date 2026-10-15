@@ -7,6 +7,9 @@ import SelectorLugar from "./SelectorLugar";
 import SelectorZona from "./SelectorZona";
 import { nombreZona, bandera } from "./lib/zonas";
 import Planificaciones from "./Planificaciones";
+import Chat from "./Chat";
+import Truco from "./Truco";
+import { canalComunidad } from "./lib/chat";
 
 const FILA = "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 const ESTADOS = [["proximos", "Próximos"], ["coordinar", "A coordinar"], ["abiertos", "Abiertos"], ["pasados", "Anteriores"], ["todos", "Todos"]];
@@ -15,7 +18,7 @@ const instante = (p) => (sinFecha(p) ? Infinity : new Date(`${p.fecha}T${p.hora}
 const cmp = (a, b) => (a === b ? 0 : a < b ? -1 : 1);
 const SEDE_VACIA = { nombre: "", direccion: "", lat: null, lng: null };
 
-export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbrirPartido, onVerPerfil }) {
+export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbrirPartido, onVerPerfil, onAbrirTruco }) {
   const cfg = configDe(comunidad);
   const [tab, setTab] = useState("partidos");
   const [partidos, setPartidos] = useState([]);
@@ -147,7 +150,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
         )}
       </div>
       <div className={FILA}>
-        {[["partidos", "Partidos"], ["plan", "Planificación"], ["sedes", "Sedes"], ["miembros", "Miembros"], ["invitar", "Invitar"], ...(esAdmin ? [["ajustes", "Ajustes"]] : [])].map(([k, t]) => (
+        {[["partidos", "Partidos"], ["chat", "Chat"], ["truco", "Truco"], ["plan", "Planificación"], ["sedes", "Sedes"], ["miembros", "Miembros"], ["invitar", "Invitar"], ...(esAdmin ? [["ajustes", "Ajustes"]] : [])].map(([k, t]) => (
           <button key={k} onClick={() => setTab(k)} className={`${btn} shrink-0 py-1 ${tab === k ? "bg-tinta text-fondo" : "bg-panel"}`}>{t}</button>
         ))}
       </div>
@@ -246,6 +249,9 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
           )}
         </>
       ))}
+
+      {tab === "chat" && <Chat canal={canalComunidad(comunidad.id)} userId={userId} onVerPerfil={onVerPerfil} alto="h-[min(60dvh,32rem)]" vacio="Todavía nadie escribió en el chat de la comunidad." />}
+      {tab === "truco" && <Truco userId={userId} comunidad={comunidad} onAbrir={onAbrirTruco} />}
 
       {tab === "plan" && <Planificaciones comunidad={comunidad} esAdmin={esAdmin} sedes={sedes} onAbrirPartido={onAbrirPartido} />}
 

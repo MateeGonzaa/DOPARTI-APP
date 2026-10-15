@@ -19,6 +19,31 @@ export const DEPORTES = {
     equipos: ["Equipo naranja", "Equipo celeste"],
     posiciones: ["Armador", "Punta", "Central", "Opuesto", "Líbero"],
   },
+  ea_fc: {
+    nombre: "EA Sports FC", emoji: "🎮", formatos: [1, 2], defecto: 1, usaMano: false,
+    equipos: ["Equipo naranja", "Equipo celeste"],
+    posiciones: ["Delantero", "Mediocampista", "Defensor", "Arquero"],
+  },
+  efootball: {
+    nombre: "eFootball (PES)", emoji: "🕹️", formatos: [1, 2], defecto: 1, usaMano: false,
+    equipos: ["Equipo naranja", "Equipo celeste"],
+    posiciones: ["Delantero", "Mediocampista", "Defensor", "Arquero"],
+  },
+  cs: {
+    nombre: "Counter-Strike", emoji: "💣", formatos: [2, 5], defecto: 5, usaMano: false,
+    equipos: ["Equipo naranja", "Equipo celeste"],
+    posiciones: ["Entry", "AWPer", "Support", "Lurker", "IGL"],
+  },
+  lol: {
+    nombre: "League of Legends", emoji: "🛡️", formatos: [1, 2, 5], defecto: 5, usaMano: false,
+    equipos: ["Equipo naranja", "Equipo celeste"],
+    posiciones: ["Top", "Jungla", "Mid", "ADC", "Support"],
+  },
+  truco: {
+    nombre: "Truco", emoji: "🃏", formatos: [1, 2, 3], defecto: 2, usaMano: false,
+    equipos: ["Pareja naranja", "Pareja celeste"],
+    posiciones: ["Mano", "Pie"],
+  },
 };
 export const LISTA = Object.keys(DEPORTES);
 
@@ -29,6 +54,7 @@ export const equiposDe = (p) => deporteDe(p).equipos;
 export function formatoNombre(deporte, t) {
   if (deporte === "padel") return "Pádel dobles";
   if (deporte === "basquet" || deporte === "voley") return `${DEPORTES[deporte].nombre} ${t}x${t}`;
+  if (deporte !== "futbol" && DEPORTES[deporte]) return `${DEPORTES[deporte].nombre} ${t}v${t}`;
   return `Fútbol ${t}`;
 }
 export const titulo = (p) => formatoNombre(p?.deporte ?? "futbol", p.tipo);
@@ -54,6 +80,6 @@ export const camposParaGuardar = (f) => ({
   genero: f.genero,
   deportes: f.deportes,
   pie: f.deportes.includes("futbol") ? f.pie : null,
-  mano: f.deportes.some((d) => d !== "futbol") ? f.mano : null,
+  mano: f.deportes.some((d) => d !== "futbol" && DEPORTES[d]?.usaMano !== false) ? f.mano : null,
   posiciones: Object.fromEntries(Object.entries(f.posiciones).filter(([d, v]) => v && f.deportes.includes(d))),
 });

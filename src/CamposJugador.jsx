@@ -10,7 +10,7 @@ export default function CamposJugador({ f, setF }) {
     setF({ ...f, deportes: esta ? f.deportes.filter((x) => x !== d) : [...f.deportes, d] });
   };
   const usaPie = f.deportes.includes("futbol");
-  const usaMano = f.deportes.some((d) => d !== "futbol");
+  const usaMano = f.deportes.some((d) => d !== "futbol" && DEPORTES[d]?.usaMano !== false);
 
   return (
     <>

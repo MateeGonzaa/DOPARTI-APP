@@ -3,7 +3,14 @@ export const DEPORTES_COM = {
   basket: { nombre: "Básquet", emoji: "🏀", preset: [3, 5], formato: (t) => `Básquet ${t}x${t}` },
   voley: { nombre: "Vóley", emoji: "🏐", preset: [2, 4, 6], formato: (t) => `Vóley ${t}x${t}` },
   padel: { nombre: "Pádel", emoji: "🎾", preset: [1, 2], formato: (t) => (t === 1 ? "Pádel singles" : t === 2 ? "Pádel dobles" : `Pádel ${t}x${t}`) },
+  // eSports y juegos de mesa. "tipo" = jugadores por equipo (1 = uno contra uno).
+  ea_fc: { nombre: "EA Sports FC (FIFA)", emoji: "🎮", esport: true, preset: [1, 2], formato: (t) => `EA FC ${t}v${t}` },
+  efootball: { nombre: "eFootball (PES)", emoji: "🕹️", esport: true, preset: [1, 2], formato: (t) => `eFootball ${t}v${t}` },
+  cs: { nombre: "Counter-Strike", emoji: "💣", esport: true, preset: [2, 5], formato: (t) => `CS ${t}v${t}` },
+  lol: { nombre: "League of Legends", emoji: "🛡️", esport: true, preset: [1, 2, 5], formato: (t) => `LoL ${t}v${t}` },
+  truco: { nombre: "Truco presencial", emoji: "🃏", preset: [1, 2, 3], formato: (t) => (t === 1 ? "Truco 1 contra 1" : t === 2 ? "Truco en parejas" : `Truco ${t}x${t}`) },
 };
+export const ESPORTS = Object.keys(DEPORTES_COM).filter((d) => DEPORTES_COM[d].esport);
 export const ORDEN = Object.keys(DEPORTES_COM);
 
 

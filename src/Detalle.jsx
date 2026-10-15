@@ -4,6 +4,7 @@ import { btn, input, Avatar, Cargando } from "./ui";
 import { cupo, cuando, sortear } from "./lib/logica";
 import { convocatoria, equiposMsg, faltanMsg } from "./lib/mensajes";
 import Mapa from "./Mapa";
+import Votos from "./Votos";
 import { DEPORTES_COM, etiqueta, cap } from "./lib/modalidades";
 
 function Equipo({ nombre, color, ids, quien }) {
@@ -104,7 +105,7 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
     window.open(grupo, "_blank", "noopener");
   }
   const nombre = (uid) => quien(uid)?.apodo ?? "?";
-  const palabra = p.deporte === "padel" ? "Pareja" : "Pechera";
+  const palabra = p.deporte === "padel" || p.deporte === "truco" ? "Pareja" : (p.deporte ?? "futbol") === "futbol" ? "Pechera" : "Equipo";
   const guardarResultado = async () => {
     await supabase.from("partidos").update({ resultado_a: Number(res.a), resultado_b: Number(res.b) }).eq("id", p.id);
     cargar();
@@ -214,6 +215,12 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
             <Equipo nombre={`${palabra} celeste`} color="bg-celeste" ids={p.equipos.B} quien={quien} />
           </div>
         </section>
+      )}
+
+      {p.equipos && (p.abierto || p.resultado_a != null) && (
+        <Votos objetivo={`partido:${p.id}`} userId={userId} cerrado={p.resultado_a != null}
+          titulo={p.resultado_a != null ? "Lo que votó la gente" : "¿Qué equipo va a ganar?"}
+          opciones={[{ id: "A", label: `${palabra} naranja`, color: "bg-naranja" }, { id: "B", label: `${palabra} celeste`, color: "bg-celeste" }]} />
       )}
 
       {(p.resultado_a != null || (p.creado_por === userId && p.equipos)) && (
