@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import TrucoPractica from "./TrucoPractica";
 import { supabase } from "./lib/supabase";
 import { btn, input, Avatar, Cargando } from "./ui";
 import { hace } from "./Comentarios";
@@ -14,6 +15,7 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
   const [comId, setComId] = useState(comunidad?.id ?? "");
   const [error, setError] = useState("");
   const [ranking, setRanking] = useState([]);
+  const [practica, setPractica] = useState(false);
 
   const cargar = async () => {
     let q = supabase.from("truco_partidas").select("*").neq("estado", "terminada").order("created_at", { ascending: false }).limit(40);
@@ -55,6 +57,7 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
     onAbrir(data.id);
   }
 
+  if (practica) return <TrucoPractica onVolver={() => setPractica(false)} />;
   if (partidas === null) return <Cargando texto="Buscando mesas de Truco…" />;
   const mias = partidas.filter((p) => p.creador_id === userId || p.rival_id === userId);
   const esperando = partidas.filter((p) => p.estado === "esperando" && !mias.includes(p));
@@ -84,6 +87,11 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
         {onVolver && <button onClick={onVolver} className="min-h-11 px-2 font-semibold text-cesped">Volver</button>}
       </div>
 
+      <div className="space-y-3 rounded-2xl bg-panel p-4">
+        <h3 className="font-extrabold">🤖 Entrenamiento contra bots</h3>
+        <p className="text-sm text-tinta/70">Practicá contra Noob, Retro, Canchero o Chad, sin afectar tu ranking.</p>
+        <button onClick={() => setPractica(true)} className={`${btn} bg-pasto text-white`}>Practicar contra bot</button>
+      </div>
       <div className="space-y-3 rounded-2xl bg-panel p-4">
         <h3 className="font-extrabold">Nueva partida 1 contra 1</h3>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Puntos de la partida">
