@@ -1,16 +1,73 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { btn, Avatar } from "./ui";
 import { Carta, Confeti } from "./CartasTruco";
 import { aplicar, crearJuego, etiquetaEnvido, opciones, pendiente, textoCanto } from "./lib/truco";
 import { DIFICULTADES, ejecutarBot } from "./lib/trucoBot";
+import { cantar, getSilencio, getVoz, setSilencio, setVoz, sonar, vozEsArgentina } from "./lib/sonidos";
 
 export default function TrucoPractica({ onVolver }) {
   const [dificultad, setDificultad] = useState("retro");
   const [meta, setMeta] = useState(15);
   const [juego, setJuego] = useState(null);
   const [error, setError] = useState("");
+  const [aviso, setAviso] = useState("");
+  const [silencio, setSil] = useState(getSilencio());
+  const [voz, setVozUi] = useState(getVoz());
   const [pensando, setPensando] = useState(false);
+  const prev = useRef(null);
+  const temporizadores = useRef(new Set());
   const bot = DIFICULTADES.find((d) => d.id === dificultad)?.nombre ?? "Retro";
+
+  const luego = (fn, ms) => {
+    const timer = setTimeout(() => {
+      temporizadores.current.delete(timer);
+      fn();
+    }, ms);
+    temporizadores.current.add(timer);
+  };
+
+  useEffect(() => () => {
+    temporizadores.current.forEach(clearTimeout);
+  }, []);
+
+  useEffect(() => {
+    const anterior = prev.current;
+    prev.current = juego;
+    if (!juego) return;
+    if (!anterior) { sonar("repartir"); return; }
+    if (juego === anterior) return;
+
+    const cuenta = (s) => s.mesa.flat().filter(Boolean).length;
+    const ultima = juego.log.at(-1);
+    const nuevaLinea = ultima && ultima !== anterior.log.at(-1);
+    const manoNueva = juego.numMano !== anterior.numMano;
+    const termino = juego.ganador !== null && anterior.ganador === null;
+
+    if (cuenta(juego) > cuenta(anterior)) sonar("carta");
+    if (juego.canto && JSON.stringify(juego.canto) !== JSON.stringify(anterior.canto)) {
+      sonar("canto");
+      cantar(juego.canto.tipo === "truco" ? ["truco", "retruco", "vale_cuatro"][juego.canto.nivel - 1] : juego.canto.cantos.at(-1));
+    } else if (nuevaLinea && /no quiso|: no quiero/.test(ultima)) { sonar("no_quiero"); cantar("no_quiero"); }
+    else if (nuevaLinea && /: quiero$/.test(ultima)) { sonar("quiero"); cantar("quiero"); }
+    else if (nuevaLinea && /al mazo/.test(ultima)) cantar("mazo");
+
+    const cambioPuntos = juego.puntos[0] !== anterior.puntos[0] || juego.puntos[1] !== anterior.puntos[1];
+    if (cambioPuntos) luego(() => sonar("puntos"), 250);
+
+    if (manoNueva && juego.resumen) {
+      luego(() => sonar(juego.resumen.ganador === 0 ? "mano_ganada" : "mano_perdida"), 350);
+      if (!termino) luego(() => sonar("repartir"), 1100);
+    }
+
+    if (termino) {
+      luego(() => {
+        sonar(juego.ganador === 0 ? "victoria" : "derrota");
+        luego(() => cantar(juego.ganador === 0 ? "victoria" : "derrota"), 1400);
+      }, 600);
+    } else if (pendiente(juego) === 0 && (pendiente(anterior) !== 0 || manoNueva)) {
+      luego(() => sonar("turno"), manoNueva ? 1300 : 450);
+    }
+  }, [juego]);
 
   useEffect(() => {
     if (!juego || juego.ganador !== null || pendiente(juego) !== 1) return;
@@ -35,9 +92,22 @@ export default function TrucoPractica({ onVolver }) {
   }
 
   function nuevaPartida() {
+    prev.current = null;
     setJuego(crearJuego(meta));
     setError("");
   }
+
+  const alternarSonido = () => { setSilencio(!silencio); setSil(!silencio); };
+  const alternarVoz = () => {
+    const nueva = !voz;
+    setVoz(nueva);
+    setVozUi(nueva);
+    if (nueva) {
+      cantar("probar");
+      setAviso(vozEsArgentina() ? "Voz argentina activada." : "Voz activada. Si tu dispositivo tiene una voz de español de Argentina, se usa sola; si no, se usa la más parecida.");
+      luego(() => setAviso(""), 5000);
+    }
+  };
 
   if (!juego) return (
     <section className="space-y-5">
@@ -100,8 +170,14 @@ export default function TrucoPractica({ onVolver }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button onClick={onVolver} className="min-h-11 px-1 font-semibold text-cesped">← Volver</button>
         <h2 className="font-display text-xl font-extrabold">🃏 Truco a {juego.meta}</h2>
-        <span className="rounded-full bg-panel px-3 py-1 text-sm font-semibold">🤖 {bot}</span>
+        <div className="flex items-center gap-1">
+          <button onClick={alternarSonido} aria-pressed={!silencio} aria-label={silencio ? "Activar sonido" : "Silenciar"} className={`${btn} px-3 ${silencio ? "bg-panel" : "bg-panel-alto"}`}>{silencio ? "🔇" : "🔊"}</button>
+          {!silencio && <button onClick={alternarVoz} aria-pressed={voz} aria-label="Voz que canta el truco" title="Voz que canta el truco" className={`${btn} px-3 ${voz ? "bg-pasto text-white" : "bg-panel"}`}>🗣️</button>}
+          <span className="rounded-full bg-panel px-3 py-1 text-sm font-semibold">🤖 {bot}</span>
+        </div>
       </div>
+
+      {aviso && <p role="status" className="text-center text-sm font-semibold text-cesped">{aviso}</p>}
 
       <div className="flex items-center justify-between gap-3 rounded-2xl bg-panel p-3">
         {marcador(0)}
