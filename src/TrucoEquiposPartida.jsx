@@ -75,6 +75,14 @@ export default function TrucoEquiposPartida({ id, userId, onVolver, onVerPerfil 
     await cargar();
   }
 
+  async function cancelarMesa() {
+    const { data, error: e } = await supabase.from("truco_partidas").delete()
+      .eq("id", id).eq("creador_id", userId).eq("estado", "esperando").select("id").maybeSingle();
+    if (e) return setError("No se pudo cancelar la mesa.");
+    if (!data) return setError("La mesa ya empezó o ya fue cancelada.");
+    onVolver();
+  }
+
   async function guardar(estado) {
     const cambios = { juego: estado, version: p.version + 1 };
     if (estado.ganador !== null) {
@@ -184,7 +192,7 @@ export default function TrucoEquiposPartida({ id, userId, onVolver, onVerPerfil 
           <button onClick={copiar} className={`${btn} bg-panel-alto`}>Copiar invitación</button>
         </div>
         {error && <p role="alert" className="text-sm font-semibold text-brasa">{error}</p>}
-        {userId === p.creador_id && <button onClick={async () => { await supabase.from("truco_partidas").delete().eq("id", id); onVolver(); }} className="min-h-11 text-sm font-semibold text-brasa">Cancelar mesa</button>}
+        {userId === p.creador_id && <button onClick={cancelarMesa} className="min-h-11 text-sm font-semibold text-brasa">Cancelar mesa</button>}
       </div>
       <Chat canal={canalTruco(p.id)} userId={userId} onVerPerfil={onVerPerfil} alto="h-44" vacio="Escribile a los que se sumen a la mesa." />
     </section>

@@ -263,7 +263,10 @@ export default function TrucoPartida({ id, userId, onVolver, onVerPerfil, onAbri
   }
 
   async function cancelarMesa() {
-    await supabase.from("truco_partidas").delete().eq("id", id);
+    const { data, error: e } = await supabase.from("truco_partidas").delete()
+      .eq("id", id).eq("creador_id", userId).eq("estado", "esperando").select("id").maybeSingle();
+    if (e) return setError("No se pudo cancelar la mesa.");
+    if (!data) return setError("La mesa ya empezó o ya fue cancelada.");
     onVolver();
   }
 

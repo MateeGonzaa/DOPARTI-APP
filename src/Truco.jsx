@@ -15,6 +15,7 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
   const [jugadoresEquipo, setJugadoresEquipo] = useState(1);
   const [comId, setComId] = useState(comunidad?.id ?? "");
   const [error, setError] = useState("");
+  const [cancelando, setCancelando] = useState(null);
   const [ranking, setRanking] = useState([]);
   const [practica, setPractica] = useState(false);
 
@@ -58,6 +59,17 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
     onAbrir(data.id);
   }
 
+  async function cancelar(p) {
+    setCancelando(p.id);
+    setError("");
+    const { data, error: e } = await supabase.from("truco_partidas").delete()
+      .eq("id", p.id).eq("creador_id", userId).eq("estado", "esperando").select("id").maybeSingle();
+    if (e) setError("No se pudo cancelar la mesa.");
+    else if (!data) setError("La mesa ya empezó o ya fue cancelada.");
+    else await cargar();
+    setCancelando(null);
+  }
+
   if (practica) return <TrucoPractica onVolver={() => setPractica(false)} />;
   if (partidas === null) return <Cargando texto="Buscando mesas de Truco…" />;
   const asientosDe = (p) => p.asientos ?? [p.creador_id, p.rival_id];
@@ -67,8 +79,8 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
   const nombre = (id) => perfiles[id]?.apodo ?? "…";
 
   const Fila = ({ p, accion, estilo }) => (
-    <li>
-      <button onClick={() => onAbrir(p.id)} className="flex min-h-16 w-full items-center gap-3 rounded-2xl bg-panel p-3 text-left hover:bg-panel-alto">
+    <li className="flex items-stretch gap-2">
+      <button onClick={() => onAbrir(p.id)} className="flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-2xl bg-panel p-3 text-left hover:bg-panel-alto">
         <Avatar perfil={perfiles[p.creador_id]} size={40} />
         <span className="min-w-0 flex-1">
           <span className="block truncate font-bold">
@@ -80,6 +92,12 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
         </span>
         <span className={`${btn} shrink-0 py-1 text-sm ${estilo}`}>{accion}</span>
       </button>
+      {p.estado === "esperando" && p.creador_id === userId && (
+        <button onClick={() => cancelar(p)} disabled={cancelando === p.id}
+          className="min-h-16 shrink-0 rounded-2xl bg-panel px-3 text-sm font-semibold text-brasa hover:bg-panel-alto disabled:opacity-60">
+          {cancelando === p.id ? "Cancelando…" : "Cancelar"}
+        </button>
+      )}
     </li>
   );
 
