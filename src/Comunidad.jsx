@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input, Avatar } from "./ui";
 import { cupo, cuando } from "./lib/logica";
-import { DEPORTES_COM, ORDEN, configDe, etiqueta, cap } from "./lib/modalidades";
+import { DEPORTES_COM, configDe, etiqueta, cap } from "./lib/modalidades";
 import SelectorLugar from "./SelectorLugar";
 import SelectorZona from "./SelectorZona";
 import { nombreZona, bandera } from "./lib/zonas";
 import Planificaciones from "./Planificaciones";
 import Chat from "./Chat";
 import Truco from "./Truco";
+import SelectorDeportes from "./SelectorDeportes";
 import { canalComunidad } from "./lib/chat";
 
 const FILA = "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
@@ -119,12 +120,10 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
   };
   const setCampo = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const centro = comunidad.zonas?.lat != null ? { lat: comunidad.zonas.lat, lng: comunidad.zonas.lng } : undefined;
-  const alternarDeporte = (d) => {
-    const on = ajustes.deportes.includes(d);
-    if (on && ajustes.deportes.length === 1) return; // al menos un deporte
-    const deportes = on ? ajustes.deportes.filter((x) => x !== d) : ORDEN.filter((x) => x === d || ajustes.deportes.includes(x));
-    setAjustes({ ...ajustes, deportes, modalidades: { ...ajustes.modalidades, [d]: ajustes.modalidades[d]?.length ? ajustes.modalidades[d] : DEPORTES_COM[d].preset } });
-  };
+  const cambiarDeportes = (deportes) => setAjustes({
+    ...ajustes, deportes,
+    modalidades: Object.fromEntries(deportes.map((d) => [d, ajustes.modalidades[d]?.length ? ajustes.modalidades[d] : DEPORTES_COM[d].preset])),
+  });
   const alternarModalidad = (d, t) => {
     const act = ajustes.modalidades[d] ?? [];
     const nuevas = act.includes(t) ? act.filter((x) => x !== t) : [...act, t].sort((a, b) => a - b);
@@ -310,12 +309,7 @@ export default function Comunidad({ comunidad, userId, onCambio, onVolver, onAbr
           </label>
           <fieldset className="space-y-3">
             <legend className="text-sm font-semibold">Deportes de la comunidad</legend>
-            <div className="flex flex-wrap gap-2">
-              {ORDEN.map((d) => (
-                <button key={d} type="button" aria-pressed={ajustes.deportes.includes(d)} onClick={() => alternarDeporte(d)}
-                  className={`${btn} py-1 ${ajustes.deportes.includes(d) ? "bg-pasto text-white" : "bg-panel"}`}>{DEPORTES_COM[d].emoji} {DEPORTES_COM[d].nombre}</button>
-              ))}
-            </div>
+            <SelectorDeportes multiple valor={ajustes.deportes} onChange={cambiarDeportes} />
             {ajustes.deportes.map((d) => (
               <div key={d} className="space-y-2 rounded-2xl bg-panel p-3">
                 <p className="text-sm font-semibold">{DEPORTES_COM[d].emoji} Modalidades de {DEPORTES_COM[d].nombre}</p>

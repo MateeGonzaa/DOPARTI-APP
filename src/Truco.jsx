@@ -13,6 +13,7 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
   const [meta, setMeta] = useState(15);
   const [comId, setComId] = useState(comunidad?.id ?? "");
   const [error, setError] = useState("");
+  const [ranking, setRanking] = useState([]);
 
   const cargar = async () => {
     let q = supabase.from("truco_partidas").select("*").neq("estado", "terminada").order("created_at", { ascending: false }).limit(40);
@@ -35,6 +36,10 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
       .subscribe();
     return () => supabase.removeChannel(sub);
   }, [comunidad?.id]);
+
+  useEffect(() => {
+    supabase.rpc("ranking_truco", { p_limite: 10 }).then(({ data }) => setRanking(data ?? []));
+  }, []);
 
   useEffect(() => {
     if (comunidad) return;
@@ -95,7 +100,7 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
           </label>
         )}
         <button onClick={crear} className={`${btn} bg-pasto text-white`}>Crear y esperar rival</button>
-        <p className="text-sm text-tinta/70">Cada partida terminada suma como partido jugado y te acerca al próximo nivel.</p>
+        <p className="text-sm text-tinta/70">Cada partida que ganás suma como partido jugado y te acerca al próximo nivel. Si perdés, no suma.</p>
         {error && <p role="alert" className="text-sm font-semibold text-brasa">{error}</p>}
       </div>
 
@@ -110,6 +115,21 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
         {esperando.length === 0 ? <p className="text-tinta/70">No hay mesas abiertas. Creá una y compartí el link.</p>
           : <ul className="grid gap-2 lg:grid-cols-2">{esperando.map((p) => <Fila key={p.id} p={p} accion="Sentarme" estilo="bg-pasto text-white" />)}</ul>}
       </div>
+      {ranking.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="font-extrabold">🏆 Ranking de Truco</h3>
+          <ol className="space-y-1">
+            {ranking.map((r, i) => (
+              <li key={r.usuario_id} className={`flex items-center gap-3 rounded-2xl p-3 ${r.usuario_id === userId ? "bg-panel-alto ring-1 ring-cesped/50" : "bg-panel"}`}>
+                <span className="w-6 text-center font-display text-lg font-extrabold text-cesped">{i + 1}</span>
+                <Avatar perfil={{ apodo: r.apodo, avatar_url: r.avatar_url }} size={32} />
+                <span className="min-w-0 flex-1 truncate font-bold">{r.apodo}</span>
+                <span className="text-sm text-tinta/70">{r.ganadas} {r.ganadas === 1 ? "victoria" : "victorias"} · {Math.round((r.ganadas / r.jugadas) * 100)}%</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
       <div className="space-y-2">
         <h3 className="flex items-center gap-2 font-extrabold"><span aria-hidden="true" className="size-2.5 animate-pulse rounded-full bg-red-500" />En vivo ahora</h3>
         {envivo.length === 0 ? <p className="text-tinta/70">Nadie está jugando en este momento.</p>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Balon } from "./ui";
 import { AUTOR } from "./lib/autor";
-import { DEPORTES_COM, ORDEN } from "./lib/modalidades";
+import { DEPORTES_COM, GRUPOS } from "./lib/modalidades";
 
 const ENLACE = "inline-flex min-h-10 items-center rounded text-left text-sm text-tinta/60 hover:text-cesped focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cesped";
 const PILDORA = "inline-flex min-h-10 items-center gap-2 rounded-full bg-panel px-3.5 text-sm font-semibold text-tinta hover:bg-panel-alto hover:text-cesped focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cesped";
@@ -78,12 +78,12 @@ export default function Footer({ secciones, onDeporte }) {
             <ul>{secciones.map((s) => <li key={s.texto}><button className={ENLACE} onClick={s.onClick}>{s.texto}</button></li>)}</ul>
           </nav>
         )}
-        {onDeporte && (
-          <nav aria-label="Deportes">
-            <h2 className={titulo}>Deportes</h2>
-            <ul>{ORDEN.map((d) => <li key={d}><button className={ENLACE} onClick={() => onDeporte(d)}>{DEPORTES_COM[d].emoji} {DEPORTES_COM[d].nombre}</button></li>)}</ul>
+        {onDeporte && GRUPOS.map((g) => (
+          <nav key={g.id} aria-label={g.nombre}>
+            <h2 className={titulo}>{g.nombre}</h2>
+            <ul>{g.lista.map((d) => <li key={d}><button className={ENLACE} onClick={() => onDeporte(d)}>{DEPORTES_COM[d].emoji} {DEPORTES_COM[d].nombre}</button></li>)}</ul>
           </nav>
-        )}
+        ))}
         <nav aria-label="Legal y contacto" className={secciones ? "col-span-2 sm:col-span-1" : ""}>
           <h2 className={titulo}>Legal y contacto</h2>
           <ul>

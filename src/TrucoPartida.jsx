@@ -222,7 +222,13 @@ export default function TrucoPartida({ id, userId, onVolver, onVerPerfil }) {
           )}
           {aviso && <p role="alert" className="text-center text-sm font-semibold text-brasa">{aviso}</p>}
           {terminada && (
-            <p className="rounded-2xl bg-panel p-3 text-center text-sm text-tinta/80">Esta partida ya cuenta como partido jugado para el nivel de los dos jugadores.</p>
+            <p role="status" className={`rounded-2xl p-3 text-center text-sm ${j !== null && juego.ganador === j ? "bg-pasto/20 font-semibold text-cesped" : "bg-panel text-tinta/80"}`}>
+              {j === null
+                ? "En el Truco solo suma nivel quien gana la partida."
+                : juego.ganador === j
+                  ? "¡Ganaste! Esta victoria suma como partido jugado y te acerca al próximo nivel."
+                  : "Perdiste esta vez: la derrota no suma nivel. En el Truco solo suman las victorias, ¡andá por la revancha!"}
+            </p>
           )}
 
           <div className="flex flex-wrap items-center justify-center gap-1" role="group" aria-label="Reacciones en vivo">

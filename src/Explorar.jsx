@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input } from "./ui";
-import { DEPORTES_COM, ORDEN } from "./lib/modalidades";
+import { DEPORTES_COM } from "./lib/modalidades";
 import { bandera, distanciaKm, formatoKm, nombreZona } from "./lib/zonas";
 import SelectorZona from "./SelectorZona";
+import SelectorDeportes from "./SelectorDeportes";
 
 const ORDENES = [["activas", "Más activas"], ["cerca", "Más cerca"], ["miembros", "Más grandes"], ["nuevas", "Más nuevas"]];
 const FILA = "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
@@ -116,13 +117,7 @@ export default function Explorar({ onVolver, onAbrir, onCrear, deporteInicial = 
       <div className="space-y-3 rounded-2xl bg-panel p-4">
         <input className={input} type="search" aria-label="Buscar por nombre" placeholder="Buscar por nombre…" value={texto} onChange={(e) => setTexto(e.target.value)} />
         <SelectorZona zonas={zonas} filtro valor={filtro} onChange={setFiltro} />
-        <div className={FILA} role="group" aria-label="Deporte">
-          <button aria-pressed={!deporte} onClick={() => setDeporte("")} className={`${btn} shrink-0 py-1 text-sm ${!deporte ? "bg-tinta text-fondo" : "bg-panel-alto"}`}>Todos</button>
-          {ORDEN.map((d) => (
-            <button key={d} aria-pressed={deporte === d} onClick={() => setDeporte(deporte === d ? "" : d)}
-              className={`${btn} shrink-0 py-1 text-sm ${deporte === d ? "bg-tinta text-fondo" : "bg-panel-alto"}`}>{DEPORTES_COM[d].emoji} {DEPORTES_COM[d].nombre}</button>
-          ))}
-        </div>
+        <SelectorDeportes valor={deporte} onChange={setDeporte} conTodos scroll />
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={cerca} className={`${btn} bg-pasto text-white`}>📍 Cerca de mí</button>
           <label className="flex items-center gap-2 text-sm font-semibold">Ordenar por

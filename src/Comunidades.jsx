@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import { btn, input } from "./ui";
 import { cuando } from "./lib/logica";
-import { DEPORTES_COM, ORDEN, etiqueta, cap } from "./lib/modalidades";
+import { DEPORTES_COM, etiqueta, cap } from "./lib/modalidades";
 import { nombreZona, bandera } from "./lib/zonas";
 import SelectorZona from "./SelectorZona";
+import SelectorDeportes from "./SelectorDeportes";
 
 export default function Comunidades({ onAbrir, userId, onAbrirPartido, onExplorar }) {
   const [lista, setLista] = useState([]);
@@ -108,16 +109,8 @@ export default function Comunidades({ onAbrir, userId, onAbrirPartido, onExplora
       </section>
       <section className="space-y-2">
         <h3 className="font-extrabold">Crear comunidad</h3>
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Deportes">
-          {ORDEN.map((d) => {
-            const on = deportesNuevos.includes(d);
-            return (
-              <button key={d} type="button" aria-pressed={on}
-                onClick={() => { if (on && deportesNuevos.length === 1) return; setDeportesNuevos(ORDEN.filter((x) => (x === d ? !on : deportesNuevos.includes(x)))); }}
-                className={`${btn} py-1 text-sm ${on ? "bg-pasto text-white" : "bg-panel"}`}>{DEPORTES_COM[d].emoji} {DEPORTES_COM[d].nombre}</button>
-            );
-          })}
-        </div>
+        <p className="text-sm text-tinta/70">Elegí qué se juega en tu comunidad. Podés combinar deportes con eSports y más.</p>
+        <SelectorDeportes multiple valor={deportesNuevos} onChange={setDeportesNuevos} />
         <div className="flex flex-wrap gap-2">
           <input className={input} placeholder="Ej: Los pibes del jueves" value={nombre} onChange={(e) => setNombre(e.target.value)} />
           <button disabled={!nombre.trim()} onClick={crear} className={`${btn} bg-pasto text-white disabled:opacity-40`}>Crear</button>

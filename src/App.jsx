@@ -9,6 +9,7 @@ import PerfilPublico from "./PerfilPublico";
 import Amigos from "./Amigos";
 import Invitaciones from "./Invitaciones";
 import Actividad from "./Actividad";
+import Notificaciones from "./Notificaciones";
 import { Cargando, Logo } from "./ui";
 import Menu from "./Menu";
 import Explorar from "./Explorar";
@@ -55,6 +56,7 @@ export default function App() {
   const [invitPend, setInvitPend] = useState(0);
   const [verActividad, setVerActividad] = useState(false);
   const [actPend, setActPend] = useState(0);
+  const [verNotif, setVerNotif] = useState(false);
   const [verExplorar, setVerExplorar] = useState(false);
   const [explorarDeporte, setExplorarDeporte] = useState("");
   const [verTruco, setVerTruco] = useState(false);
@@ -86,6 +88,16 @@ export default function App() {
   }, []);
 
 
+  // Cuando llega un aviso nuevo, se actualizan los contadores al instante
+  useEffect(() => {
+    if (!sesion) return;
+    const uid = sesion.user.id;
+    const sub = supabase.channel(`avisos:${uid}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notificaciones", filter: `usuario_id=eq.${uid}` }, () => cargarPendientes(uid))
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [sesion]);
+
   useEffect(() => {
     if (!sesion) { setPerfil(null); setListo(false); return; }
     cargarPerfil(sesion.user.id);
@@ -115,11 +127,27 @@ export default function App() {
     </>
   );
 
-  const limpiar = () => { setPerfilId(null); setVerPerfil(false); setVerAmigos(false); setVerInvitaciones(false); setVerActividad(false); setVerExplorar(false); setVerTruco(false); setTrucoId(null); setVerMensajes(false); setMensajesCon(null); };
+  const limpiar = () => { setPerfilId(null); setVerPerfil(false); setVerAmigos(false); setVerInvitaciones(false); setVerActividad(false); setVerNotif(false); setVerExplorar(false); setVerTruco(false); setTrucoId(null); setVerMensajes(false); setMensajesCon(null); };
   const inicio = () => { limpiar(); setComunidad(null); setPartidoId(null); };
   const irMensajes = (con = null) => { limpiar(); setComunidad(null); setPartidoId(null); setMensajesCon(con); setVerMensajes(true); };
   const irTruco = (id = null) => { limpiar(); setComunidad(null); setPartidoId(null); setVerTruco(true); setTrucoId(id); };
   const totalPend = pendientes + invitPend + actPend;
+  const abrirAviso = async (n) => {
+    const r = n.ref ?? {};
+    limpiar(); setComunidad(null); setPartidoId(null);
+    if (n.tipo === "invitacion") return setVerInvitaciones(true);
+    if (n.tipo === "amistad_solicitud") return setVerAmigos(true);
+    if (n.tipo === "amistad_aceptada") return setPerfilId(r.perfil ?? n.de_id);
+    if (n.tipo === "mensaje") return irMensajes(r.con ?? n.de_id);
+    if ((n.tipo === "recordatorio" || n.tipo === "partido_nuevo") && r.partido) return setPartidoId(r.partido);
+    if (n.tipo === "truco_rival" || n.tipo === "truco_fin") return irTruco(r.truco ?? null);
+    if (n.tipo === "comunidad_nuevo_miembro" && r.comunidad) {
+      const { data } = await supabase.from("comunidades").select("*, zonas(nombre, provincia, pais, lat, lng)").eq("id", r.comunidad).maybeSingle();
+      return data ? setComunidad(data) : undefined;
+    }
+    if (n.perfil_id) return setPerfilId(n.perfil_id);
+    if (n.tipo === "sistema") return setVerNotif(true);
+  };
   const irExplorar = (deporte = "") => { limpiar(); setComunidad(null); setPartidoId(null); setExplorarDeporte(deporte); setVerExplorar(true); };
   const arriba = (fn) => () => { fn(); window.scrollTo({ top: 0 }); };
   const seccionesFooter = [
@@ -130,11 +158,12 @@ export default function App() {
     { texto: "Amigos", onClick: arriba(() => { limpiar(); setVerAmigos(true); }) },
     { texto: "Invitaciones", onClick: arriba(() => { limpiar(); setVerInvitaciones(true); }) },
     { texto: "Actividad", onClick: arriba(() => { limpiar(); setVerActividad(true); }) },
+    { texto: "Notificaciones", onClick: arriba(() => { limpiar(); setVerNotif(true); }) },
     { texto: "Mi perfil", onClick: arriba(() => { limpiar(); setPerfilId(sesion.user.id); }) },
   ];
 
   const items = [
-    { texto: "Mis comunidades", activa: !comunidad && !partidoId && !verPerfil && !perfilId && !verAmigos && !verInvitaciones && !verExplorar && !verActividad && !verTruco && !trucoId && !verMensajes, onClick: inicio },
+    { texto: "Mis comunidades", activa: !comunidad && !partidoId && !verPerfil && !perfilId && !verAmigos && !verInvitaciones && !verExplorar && !verActividad && !verNotif && !verTruco && !trucoId && !verMensajes, onClick: inicio },
     { texto: "Explorar comunidades", activa: verExplorar, onClick: () => irExplorar() },
     { texto: "Truco virtual", activa: verTruco || !!trucoId, onClick: () => irTruco() },
     { texto: "Mensajes", activa: verMensajes, onClick: () => irMensajes() },
@@ -142,6 +171,7 @@ export default function App() {
     { texto: "Amigos", insignia: pendientes, activa: verAmigos, onClick: () => { limpiar(); setVerAmigos(true); } },
     { texto: "Invitaciones", insignia: invitPend, activa: verInvitaciones, onClick: () => { limpiar(); setVerInvitaciones(true); } },
     { texto: "Actividad", insignia: actPend, activa: verActividad, onClick: () => { limpiar(); setVerActividad(true); } },
+    { texto: "Notificaciones", activa: verNotif, onClick: () => { limpiar(); setVerNotif(true); } },
     { texto: "Salir", onClick: () => supabase.auth.signOut(), peligro: true },
   ];
 
@@ -180,8 +210,11 @@ export default function App() {
           onAbrirPartido={(id) => { setVerInvitaciones(false); setPartidoId(id); }} />
       ) : verExplorar ? (
         <Explorar key={explorarDeporte} deporteInicial={explorarDeporte} onVolver={() => setVerExplorar(false)} onAbrir={(c) => { limpiar(); setPartidoId(null); setComunidad(c); }} onCrear={() => { limpiar(); setComunidad(null); }} />
+      ) : verNotif ? (
+        <Notificaciones userId={sesion.user.id} email={sesion.user.email} perfil={perfil} onVolver={() => setVerNotif(false)} />
       ) : verActividad ? (
-        <Actividad userId={sesion.user.id} onVolver={() => setVerActividad(false)} onVerPerfil={setPerfilId} onCambio={cargarPendientes} />
+        <Actividad userId={sesion.user.id} onVolver={() => setVerActividad(false)} onAbrir={abrirAviso}
+          onConfigurar={() => { limpiar(); setVerNotif(true); }} onCambio={cargarPendientes} />
       ) : partidoId ? (
         <Detalle id={partidoId} userId={sesion.user.id} onVolver={() => setPartidoId(null)} onVerPerfil={setPerfilId} />
       ) : comunidad ? (
