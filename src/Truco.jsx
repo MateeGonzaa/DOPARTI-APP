@@ -12,6 +12,7 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
   const [perfiles, setPerfiles] = useState({});
   const [comunidades, setComunidades] = useState([]);
   const [meta, setMeta] = useState(15);
+  const [jugadoresEquipo, setJugadoresEquipo] = useState(1);
   const [comId, setComId] = useState(comunidad?.id ?? "");
   const [error, setError] = useState("");
   const [ranking, setRanking] = useState([]);
@@ -24,7 +25,7 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
     if (e) { setError("No se pudo cargar el Truco. Falta ejecutar la migración de la base de datos."); return setPartidas([]); }
     const lista = data ?? [];
     setPartidas(lista);
-    const ids = [...new Set(lista.flatMap((p) => [p.creador_id, p.rival_id]).filter(Boolean))];
+    const ids = [...new Set(lista.flatMap((p) => p.asientos ?? [p.creador_id, p.rival_id]).filter(Boolean))];
     if (ids.length) {
       const { data: ps } = await supabase.from("profiles").select(PERFIL).in("id", ids);
       setPerfiles((x) => ({ ...x, ...Object.fromEntries((ps ?? []).map((p) => [p.id, p])) }));
@@ -52,14 +53,15 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
   async function crear() {
     setError("");
     const { data, error: e } = await supabase.from("truco_partidas")
-      .insert({ puntos_meta: meta, comunidad_id: comId || null }).select().single();
+      .insert({ puntos_meta: meta, jugadores_equipo: jugadoresEquipo, comunidad_id: comId || null }).select().single();
     if (e) return setError(`No se pudo crear la partida (${e.message}).`);
     onAbrir(data.id);
   }
 
   if (practica) return <TrucoPractica onVolver={() => setPractica(false)} />;
   if (partidas === null) return <Cargando texto="Buscando mesas de Truco…" />;
-  const mias = partidas.filter((p) => p.creador_id === userId || p.rival_id === userId);
+  const asientosDe = (p) => p.asientos ?? [p.creador_id, p.rival_id];
+  const mias = partidas.filter((p) => asientosDe(p).includes(userId));
   const esperando = partidas.filter((p) => p.estado === "esperando" && !mias.includes(p));
   const envivo = partidas.filter((p) => p.estado === "jugando" && !mias.includes(p));
   const nombre = (id) => perfiles[id]?.apodo ?? "…";
@@ -73,6 +75,7 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
             {nombre(p.creador_id)}{p.rival_id ? ` vs ${nombre(p.rival_id)}` : ""}
           </span>
           <span className="block text-sm text-tinta/70">A {p.puntos_meta} puntos · {hace(p.created_at)}
+            {p.jugadores_equipo > 1 ? ` · ${asientosDe(p).filter(Boolean).length}/${p.jugadores_equipo * 2} jugadores · ${p.jugadores_equipo} contra ${p.jugadores_equipo}` : ""}
             {p.estado === "jugando" && p.juego ? ` · ${p.juego.puntos[0]} a ${p.juego.puntos[1]}` : ""}</span>
         </span>
         <span className={`${btn} shrink-0 py-1 text-sm ${estilo}`}>{accion}</span>
@@ -93,7 +96,15 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
         <button onClick={() => setPractica(true)} className={`${btn} bg-pasto text-white`}>Practicar contra bot</button>
       </div>
       <div className="space-y-3 rounded-2xl bg-panel p-4">
-        <h3 className="font-extrabold">Nueva partida 1 contra 1</h3>
+        <h3 className="font-extrabold">Nueva partida {jugadoresEquipo} contra {jugadoresEquipo}</h3>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Jugadores por equipo">
+          {[1, 2, 3].map((cantidad) => (
+            <button key={cantidad} aria-pressed={jugadoresEquipo === cantidad} onClick={() => setJugadoresEquipo(cantidad)}
+              className={`${btn} py-1 ${jugadoresEquipo === cantidad ? "bg-pasto text-white" : "bg-panel-alto"}`}>
+              {cantidad} contra {cantidad}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Puntos de la partida">
           {[15, 30].map((m) => (
             <button key={m} aria-pressed={meta === m} onClick={() => setMeta(m)} className={`${btn} py-1 ${meta === m ? "bg-pasto text-white" : "bg-panel-alto"}`}>A {m} puntos</button>
@@ -107,7 +118,7 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
             </select>
           </label>
         )}
-        <button onClick={crear} className={`${btn} bg-pasto text-white`}>Crear y esperar rival</button>
+        <button onClick={crear} className={`${btn} bg-pasto text-white`}>Crear y esperar jugadores</button>
         <p className="text-sm text-tinta/70">Cada partida que ganás suma como partido jugado y te acerca al próximo nivel. Si perdés, no suma.</p>
         {error && <p role="alert" className="text-sm font-semibold text-brasa">{error}</p>}
       </div>
@@ -119,7 +130,7 @@ export default function Truco({ userId, comunidad = null, onAbrir, onVolver }) {
         </div>
       )}
       <div className="space-y-2">
-        <h3 className="font-extrabold">Mesas esperando rival</h3>
+        <h3 className="font-extrabold">Mesas esperando jugadores</h3>
         {esperando.length === 0 ? <p className="text-tinta/70">No hay mesas abiertas. Creá una y compartí el link.</p>
           : <ul className="grid gap-2 lg:grid-cols-2">{esperando.map((p) => <Fila key={p.id} p={p} accion="Sentarme" estilo="bg-pasto text-white" />)}</ul>}
       </div>

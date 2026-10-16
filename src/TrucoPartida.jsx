@@ -8,6 +8,7 @@ import { accionPorTiempo, aplicarConReloj, crearJuego, etiquetaEnvido, opciones,
 import { cantar, getSilencio, getVoz, setSilencio, setVoz, sonar, vozEsArgentina } from "./lib/sonidos";
 import { trucoMsg } from "./lib/mensajes";
 import { canalDm, canalTruco } from "./lib/chat";
+import TrucoEquiposPartida from "./TrucoEquiposPartida";
 
 const REACCIONES = ["👏", "😂", "😡", "🔥", "🧉"];
 const GRACIA_RIVAL_MS = 4000; // si el rival no movió, su tiempo se da por vencido recién 4 s después (cubre desfasajes de reloj)
@@ -116,15 +117,17 @@ export default function TrucoPartida({ id, userId, onVolver, onVerPerfil, onAbri
 
   // ---------- Empezar la partida cuando hay dos jugadores ----------
   useEffect(() => {
-    if (!p || p.estado !== "esperando" || !p.rival_id || yo < 0) return;
+    const asientos = p?.asientos ?? [p?.creador_id, p?.rival_id];
+    const requeridos = (p?.jugadores_equipo ?? 1) * 2;
+    if (!p || p.estado !== "esperando" || asientos.filter(Boolean).length < requeridos || !asientos.includes(userId)) return;
     (async () => {
       const { data } = await supabase.from("truco_partidas")
-        .update({ estado: "jugando", juego: crearJuego(p.puntos_meta), version: 1 })
+        .update({ estado: "jugando", juego: crearJuego(p.puntos_meta, p.jugadores_equipo ?? 1), version: 1 })
         .eq("id", p.id).eq("estado", "esperando").not("rival_id", "is", null)
         .select("*").maybeSingle();
       if (data) fusionar(data); else cargar();
     })();
-  }, [p?.estado, p?.rival_id, yo]);
+  }, [p?.estado, p?.rival_id, p?.asientos?.join("|"), p?.jugadores_equipo, userId]);
 
   // ---------- Guardar una jugada (con control de versión: si el rival movió primero, se recarga) ----------
   async function guardar(estado) {
@@ -156,6 +159,7 @@ export default function TrucoPartida({ id, userId, onVolver, onVerPerfil, onAbri
   // Si a quien le toca se le acaba el tiempo, su propio dispositivo juega por él. Si no está (cerró la app),
   // el dispositivo del rival lo hace unos segundos después. Primera vez: pierde la mano. Segunda seguida: pierde la partida.
   useEffect(() => {
+    if ((p?.jugadores_equipo ?? 1) > 1) return;
     if (pend === null || yo < 0 || restanteMs === null || enviando.current) return;
     if (restanteMs > (pend === yo ? 0 : -GRACIA_RIVAL_MS)) return;
     enviando.current = true;
@@ -179,6 +183,7 @@ export default function TrucoPartida({ id, userId, onVolver, onVerPerfil, onAbri
     const a = prev.current;
     prev.current = s;
     if (!s) return;
+    if ((p?.jugadores_equipo ?? 1) > 1) return;
     if (!a) { if (vistoEspera.current) sonar("repartir"); return; }
     if (s === a) return;
 
@@ -232,7 +237,9 @@ export default function TrucoPartida({ id, userId, onVolver, onVerPerfil, onAbri
   }, [p?.juego]);
 
   // Si entrás a una partida que ya terminó siendo ganador, también hay festejo
-  useEffect(() => { if (p?.estado === "terminada" && p.ganador_id === userId && !prev.current) setFestejo(true); }, [p?.estado]);
+  useEffect(() => {
+    if ((p?.jugadores_equipo ?? 1) === 1 && p?.estado === "terminada" && p.ganador_id === userId && !prev.current) setFestejo(true);
+  }, [p?.estado, p?.jugadores_equipo]);
 
   // ---------- Acciones de la mesa ----------
   const reaccionar = (emoji) => canalReac.current?.send({ type: "broadcast", event: "reaccion", payload: { emoji } });
@@ -280,6 +287,10 @@ export default function TrucoPartida({ id, userId, onVolver, onVerPerfil, onAbri
         <button onClick={onVolver} className={`${btn} bg-pasto text-white`}>Volver al Truco</button>
       </section>
     );
+  }
+
+  if ((p.jugadores_equipo ?? 1) > 1) {
+    return <TrucoEquiposPartida id={id} userId={userId} onVolver={onVolver} onVerPerfil={onVerPerfil} />;
   }
 
   const Cabecera = (

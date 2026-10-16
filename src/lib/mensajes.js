@@ -39,8 +39,9 @@ export function equiposMsg(p, nombre) {
 // Invitación a una mesa de Truco virtual. Si la mesa es de una comunidad se suma el link de esa comunidad.
 export function trucoMsg({ partida, comunidad, origen = location.origin }) {
   const linkMesa = `${origen}/?truco=${partida.id}`;
+  const jugadores = partida.jugadores_equipo ?? 1;
   return unir([
-    `🃏 Te espero en una mesa de Truco 1 contra 1, a ${partida.puntos_meta} puntos.`,
+    `🃏 Te espero en una mesa de Truco ${jugadores} contra ${jugadores}, a ${partida.puntos_meta} puntos.`,
     `Sentate acá: ${linkMesa}`,
     "",
     comunidad?.codigo_invitacion
