@@ -93,14 +93,80 @@ export function sonar(nombre) {
   try { SONIDOS[nombre]?.(); } catch { /* el audio nunca debe romper el juego */ }
 }
 
-export function hablar(texto) {
+// ---------- Voz ----------
+// Se usa la voz del dispositivo. Para que suene lo más argentina y lo menos robótica posible:
+//  1) se prefiere una voz es-AR; si no hay, una latinoamericana; y la de España queda de último recurso.
+//  2) se prefieren las voces "naturales" (neuronales), que son las que suenan como una persona.
+//  3) se dicen frases de cancha con variantes, y se varía un poco el ritmo y el tono en cada canto.
+let vozElegida = null;
+let buscada = false;
+
+const LATAM = ["es-uy", "es-cl", "es-419", "es-us", "es-mx", "es-co", "es-pe", "es-ve", "es-py", "es-bo"];
+
+function puntaje(v) {
+  const l = (v.lang || "").replace("_", "-").toLowerCase();
+  let p;
+  if (l === "es-ar") p = 120;
+  else if (l === "es-uy") p = 70;
+  else if (LATAM.includes(l)) p = 60;
+  else if (l.startsWith("es")) p = 20;
+  else return -1;
+  if (/natural|neural|online|enhanced|premium/i.test(v.name)) p += 40; // son las menos robóticas
+  if (/google/i.test(v.name)) p += 10;
+  if (/diego|isabela|tom[aá]s|elena|paola/i.test(v.name)) p += 5; // voces es-AR conocidas
+  return p;
+}
+
+function elegirVoz() {
+  const lista = window.speechSynthesis?.getVoices?.() ?? [];
+  if (!lista.length) return null;
+  buscada = true;
+  vozElegida = lista.map((v) => [puntaje(v), v]).filter(([p]) => p > 0).sort((a, b) => b[0] - a[0])[0]?.[1] ?? null;
+  return vozElegida;
+}
+
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  // Los navegadores cargan las voces de a poco: se vuelve a elegir cuando aparecen
+  window.speechSynthesis.addEventListener?.("voiceschanged", () => { buscada = false; elegirVoz(); });
+}
+
+// Nombre de la voz que se está usando (para mostrarlo en pantalla)
+export const nombreVoz = () => (vozElegida ?? (buscada ? null : elegirVoz()))?.name ?? null;
+export const vozEsArgentina = () => /^es[-_]ar$/i.test((vozElegida ?? elegirVoz())?.lang ?? "");
+
+export function hablar(texto, { rapido = 1 } = {}) {
   if (silencio || !voz || !("speechSynthesis" in window)) return;
   try {
+    const v = vozElegida ?? elegirVoz();
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(texto);
-    u.lang = "es-AR";
-    u.rate = 1.1;
-    u.pitch = 0.9;
+    u.lang = v?.lang ?? "es-AR";
+    if (v) u.voice = v;
+    u.rate = (1.02 + Math.random() * 0.1) * rapido; // un poco de variación para que no suene siempre igual
+    u.pitch = 0.95 + Math.random() * 0.12;
+    u.volume = 1;
     window.speechSynthesis.speak(u);
   } catch { /* sin voz disponible */ }
+}
+
+const elegir = (xs) => xs[Math.floor(Math.random() * xs.length)];
+
+const FRASES = {
+  truco: ["¡Truco!", "¡Truco, che!", "¡Truco, loco!", "¡Truco, dale!"],
+  retruco: ["¡Quiero retruco!", "¡Retruco!", "¡Y retruco, che!"],
+  vale_cuatro: ["¡Quiero vale cuatro!", "¡Vale cuatro!", "¡Vale cuatro, che!"],
+  envido: ["¡Envido!", "¡Envido, che!", "¡Envido, dale!"],
+  real_envido: ["¡Real envido!", "¡Real envido, che!"],
+  falta_envido: ["¡Falta envido!", "¡Falta envido, dale!", "¡Falta envido, che!"],
+  quiero: ["¡Quiero!", "¡Quiero, dale!", "¡Quiero, quiero!", "¡Quiero, che!"],
+  no_quiero: ["No quiero.", "No, no quiero.", "Eh... no quiero.", "Paso, no quiero."],
+  mazo: ["Me voy al mazo.", "¡Al mazo!", "Al mazo, che."],
+  victoria: ["¡Ganamos, che!", "¡Qué groso, ganaste!", "¡Vamos, che, ganaste!"],
+  derrota: ["Uh, qué lástima. ¡Pedí la revancha!", "Se escapó, che. ¡Revancha!"],
+  probar: ["¡Dale, que empiece el truco!", "¡Buenas! ¿Jugamos un truco?"],
+};
+
+export function cantar(clave) {
+  const f = FRASES[clave];
+  if (f) hablar(elegir(f));
 }

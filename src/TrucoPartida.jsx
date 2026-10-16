@@ -5,7 +5,7 @@ import Chat from "./Chat";
 import Votos from "./Votos";
 import { Carta, Confeti } from "./CartasTruco";
 import { accionPorTiempo, aplicarConReloj, crearJuego, etiquetaEnvido, opciones, pendiente, textoCanto } from "./lib/truco";
-import { getSilencio, getVoz, hablar, setSilencio, setVoz, sonar } from "./lib/sonidos";
+import { cantar, getSilencio, getVoz, setSilencio, setVoz, sonar, vozEsArgentina } from "./lib/sonidos";
 import { trucoMsg } from "./lib/mensajes";
 import { canalDm, canalTruco } from "./lib/chat";
 
@@ -191,9 +191,10 @@ export default function TrucoPartida({ id, userId, onVolver, onVerPerfil, onAbri
     if (cuenta(s) > cuenta(a)) sonar("carta");
     if (s.canto && JSON.stringify(s.canto) !== JSON.stringify(a.canto)) {
       sonar("canto");
-      hablar(`¡${textoCanto(s)}!`);
-    } else if (nuevaLinea && /no quiso|: no quiero/.test(ultima)) { sonar("no_quiero"); hablar("No quiero"); }
-    else if (nuevaLinea && /: quiero$/.test(ultima)) { sonar("quiero"); hablar("¡Quiero!"); }
+      cantar(s.canto.tipo === "truco" ? ["truco", "retruco", "vale_cuatro"][s.canto.nivel - 1] : s.canto.cantos.at(-1));
+    } else if (nuevaLinea && /no quiso|: no quiero/.test(ultima)) { sonar("no_quiero"); cantar("no_quiero"); }
+    else if (nuevaLinea && /: quiero$/.test(ultima)) { sonar("quiero"); cantar("quiero"); }
+    else if (nuevaLinea && /al mazo/.test(ultima)) cantar("mazo");
 
     const cambioPuntos = s.puntos[0] !== a.puntos[0] || s.puntos[1] !== a.puntos[1];
     if (cambioPuntos) {
@@ -220,7 +221,11 @@ export default function TrucoPartida({ id, userId, onVolver, onVerPerfil, onAbri
     if (texto) { const k = Date.now(); setToast({ texto, k }); luego(() => setToast((t) => (t?.k === k ? null : t)), 3200); }
 
     if (termino) {
-      luego(() => { sonar(yo < 0 || s.ganador === yo ? "victoria" : "derrota"); if (s.ganador === yo) setFestejo(true); }, 600);
+      luego(() => {
+        sonar(yo < 0 || s.ganador === yo ? "victoria" : "derrota");
+        if (s.ganador === yo) setFestejo(true);
+        if (yo >= 0) luego(() => cantar(s.ganador === yo ? "victoria" : "derrota"), 1400);
+      }, 600);
     } else if (pendiente(s) === yo && yo >= 0 && (pendiente(a) !== yo || manoNueva)) {
       luego(() => sonar("turno"), manoNueva ? 1300 : 450);
     }
@@ -232,7 +237,16 @@ export default function TrucoPartida({ id, userId, onVolver, onVerPerfil, onAbri
   // ---------- Acciones de la mesa ----------
   const reaccionar = (emoji) => canalReac.current?.send({ type: "broadcast", event: "reaccion", payload: { emoji } });
   const alternarSonido = () => { setSilencio(!silencio); setSil(!silencio); };
-  const alternarVoz = () => { setVoz(!voz); setVozUi(!voz); };
+  const alternarVoz = () => {
+    const nueva = !voz;
+    setVoz(nueva);
+    setVozUi(nueva);
+    if (nueva) {
+      cantar("probar");
+      setAviso(vozEsArgentina() ? "Voz argentina activada." : "Voz activada. Si tu dispositivo tiene una voz de español de Argentina, se usa sola; si no, se usa la más parecida.");
+      setTimeout(() => setAviso(""), 5000);
+    }
+  };
 
   async function sentarme() {
     setError("");
@@ -349,7 +363,7 @@ export default function TrucoPartida({ id, userId, onVolver, onVerPerfil, onAbri
       {[0, 1, 2].map((r) => {
         const c = s.mesa[j][r];
         return (
-          <div key={r} className={`grid h-[5rem] w-[3.4rem] place-items-center rounded-xl border border-dashed sm:h-[5.9rem] sm:w-16 ${s.bazas[r] === j ? "border-cesped bg-cesped/10" : "border-white/15"}`}>
+          <div key={r} className={`grid h-[5.1rem] w-[3.4rem] place-items-center rounded-xl border border-dashed sm:h-24 sm:w-16 ${s.bazas[r] === j ? "border-cesped bg-cesped/10" : "border-white/15"}`}>
             {c && <Carta key={`${s.numMano}-${j}-${r}`} c={c} chica className={j === abajo ? "carta-juega-yo" : "carta-juega-rival"} />}
           </div>
         );
@@ -447,6 +461,7 @@ export default function TrucoPartida({ id, userId, onVolver, onVerPerfil, onAbri
         </div>
       )}
 
+      {aviso && <p role="status" className="text-center text-sm font-semibold text-cesped">{aviso}</p>}
       {error && <p role="alert" className="text-center text-sm font-semibold text-brasa">{error}</p>}
 
       {/* Resultado */}
