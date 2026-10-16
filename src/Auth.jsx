@@ -6,8 +6,8 @@ import SelectorFoto from "./SelectorFoto";
 import { redimensionar } from "./lib/imagen";
 import { GENEROS, MANOS } from "./lib/deportes";
 
-export default function Auth({ onPerfilActualizado }) {
-  const [registro, setRegistro] = useState(false);
+export default function Auth({ onPerfilActualizado, invitado = false }) {
+  const [registro, setRegistro] = useState(invitado);
   const [f, setF] = useState({ nombre: "", apodo: "", edad: "", genero: GENEROS[0][0], deportes: ["futbol"], pie: "diestro", mano: MANOS[0][0], posiciones: {}, email: "", password: "" });
   const [foto, setFoto] = useState(null);
   const [error, setError] = useState("");
@@ -48,6 +48,11 @@ export default function Auth({ onPerfilActualizado }) {
   return (
     <form onSubmit={enviar} className="mx-auto mt-10 max-w-sm space-y-3 p-5">
       <h1 className="text-4xl font-extrabold"><Logo /></h1>
+      {invitado && (
+        <p role="status" className="rounded-2xl bg-panel p-3 text-sm font-semibold text-cesped">
+          🎉 Te invitaron a DOPARTI. {registro ? "Creá tu cuenta y entrás directo a lo que te compartieron." : "Entrá y vas directo a lo que te compartieron."}
+        </p>
+      )}
       <p className="text-tinta/70">{registro ? "Creá tu cuenta para armar partidos con tu grupo." : "Entrá para ver tus partidos."}</p>
       {registro && (
         <>

@@ -134,3 +134,67 @@
   *, *::before, *::after { transition: none !important; animation: none !important; }
   button:not(:disabled):active { transform: none; }
 }
+
+/* ---------- Truco virtual: animaciones ---------- */
+@keyframes carta-reparte {
+  from { opacity: 0; transform: translateY(-4.5rem) rotate(-14deg) scale(0.6); }
+  to   { opacity: 1; transform: none; }
+}
+.carta-reparte { animation: carta-reparte 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@keyframes carta-juega-yo {
+  from { opacity: 0.3; transform: translateY(6.5rem) scale(1.35) rotate(9deg); }
+  60%  { opacity: 1; transform: translateY(-0.3rem) scale(1.02) rotate(-2deg); }
+  to   { transform: none; }
+}
+@keyframes carta-juega-rival {
+  from { opacity: 0.3; transform: translateY(-6.5rem) scale(1.35) rotate(-9deg); }
+  60%  { opacity: 1; transform: translateY(0.3rem) scale(1.02) rotate(2deg); }
+  to   { transform: none; }
+}
+.carta-juega-yo { animation: carta-juega-yo 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+.carta-juega-rival { animation: carta-juega-rival 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+
+@keyframes canto-pop {
+  0%   { transform: scale(0.3) rotate(-8deg); opacity: 0; }
+  55%  { transform: scale(1.2) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.canto-pop { animation: canto-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+
+@keyframes toast-entra {
+  from { transform: translateY(0.75rem); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.toast-entra { animation: toast-entra 0.3s ease-out both; }
+
+@keyframes puntos-salta {
+  0%, 100% { transform: scale(1); }
+  35%      { transform: scale(1.6); color: var(--color-cesped); }
+}
+.puntos-salta { animation: puntos-salta 0.7s ease-out; }
+
+@keyframes tu-turno {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(95 224 141 / 0.0); }
+  50%      { box-shadow: 0 0 22px 2px rgb(95 224 141 / 0.45); }
+}
+.tu-turno { animation: tu-turno 1.6s ease-in-out infinite; }
+
+@keyframes reloj-urgente {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-2px); }
+  75%      { transform: translateX(2px); }
+}
+.reloj-urgente { animation: reloj-urgente 0.35s linear infinite; }
+
+@keyframes confeti-cae {
+  from { transform: translateY(-8vh) rotate(0); opacity: 1; }
+  to   { transform: translateY(108vh) rotate(720deg); opacity: 0.85; }
+}
+.confeti-pieza { animation: confeti-cae linear forwards; }
+
+@keyframes mesa-espera {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+.mesa-espera { animation: mesa-espera 1.6s ease-in-out infinite; }

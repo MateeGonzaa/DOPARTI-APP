@@ -68,7 +68,7 @@ const nuevaMano = (s, mano) => {
 };
 
 export function crearJuego(meta = 15) {
-  const s = { meta, puntos: [0, 0], numMano: 1, log: [], resumen: null, ganador: null };
+  const s = { meta, puntos: [0, 0], numMano: 1, log: [], resumen: null, ganador: null, tiempos: [0, 0] };
   return nuevaMano(s, 0);
 }
 
@@ -277,3 +277,38 @@ export const textoCanto = (s) => {
     ? NOMBRE_TRUCO[s.canto.nivel]
     : s.canto.cantos.map((c) => NOMBRE_ENVIDO[c]).join(" + ");
 };
+
+// ---------- Reloj de turno (tiempo de tolerancia) ----------
+// Quien tiene que mover ahora: responder el canto pendiente o jugar su turno.
+export const pendiente = (s) => (s.canto ? otro(s.canto.de) : s.turno);
+
+// Se usa en lugar de `aplicar` cuando juega una persona: además, le borra el "castigo" por demora.
+export function aplicarConReloj(s, a) {
+  const r = aplicar(s, a);
+  if (!r.ok) return r;
+  const tiempos = [...(s.tiempos ?? [0, 0])];
+  tiempos[a.j] = 0;
+  return { ok: true, estado: { ...r.estado, tiempos } };
+}
+
+// Se usa cuando se agota el tiempo de quien tenía que mover.
+// 1ª demora seguida: pierde la mano (se va al mazo o no quiere el canto).
+// 2ª demora seguida: pierde la partida por abandono.
+export const DEMORAS_PARA_ABANDONO = 2;
+export function accionPorTiempo(s) {
+  if (s.ganador !== null) return { ok: false, error: "La partida ya terminó." };
+  const j = pendiente(s);
+  const tiempos = [...(s.tiempos ?? [0, 0])];
+  tiempos[j] += 1;
+  if (tiempos[j] >= DEMORAS_PARA_ABANDONO) {
+    const puntos = [...s.puntos];
+    puntos[otro(j)] = s.meta;
+    return {
+      ok: true, j, abandono: true,
+      estado: agregarLog({ ...s, tiempos, puntos, ganador: otro(j) }, `Jugador ${j + 1} abandonó por falta de tiempo`),
+    };
+  }
+  const r = aplicar(s, { tipo: s.canto ? "no_quiero" : "mazo", j });
+  if (!r.ok) return r;
+  return { ok: true, j, abandono: false, estado: agregarLog({ ...r.estado, tiempos }, `Jugador ${j + 1} se quedó sin tiempo`) };
+}

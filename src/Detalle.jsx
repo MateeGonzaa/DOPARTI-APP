@@ -28,7 +28,7 @@ export default function Detalle({ id, userId, onVolver, onVerPerfil }) {
   const cargar = async () => {
     const { data } = await supabase
       .from("partidos")
-      .select("*, comunidades(whatsapp_link), inscripciones(id, usuario_id, created_at, profiles(apodo, avatar_url))")
+      .select("*, comunidades(whatsapp_link, nombre, codigo_invitacion), inscripciones(id, usuario_id, created_at, profiles(apodo, avatar_url))")
       .eq("id", id)
       .single();
     if (data) data.inscripciones.sort((a, b) => a.created_at.localeCompare(b.created_at));

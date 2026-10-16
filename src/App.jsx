@@ -19,6 +19,21 @@ import Truco from "./Truco";
 import TrucoPartida from "./TrucoPartida";
 import { Avatar } from "./ui";
 
+// Si alguien abre un link de invitación (comunidad, partido o mesa de Truco) sin tener cuenta, el código se recuerda
+// hasta que se registre o inicie sesión (también si tiene que confirmar el email y vuelve después).
+const PENDIENTE = "doparti_pendiente";
+const CLAVES_LINK = ["invitacion", "partido", "truco"];
+function guardarPendiente() {
+  try {
+    const qs = new URLSearchParams(location.search);
+    const p = Object.fromEntries(CLAVES_LINK.filter((k) => qs.get(k)).map((k) => [k, qs.get(k)]));
+    if (Object.keys(p).length) localStorage.setItem(PENDIENTE, JSON.stringify(p));
+  } catch { /* sin almacenamiento */ }
+}
+const leerPendiente = () => { try { return JSON.parse(localStorage.getItem(PENDIENTE)) ?? {}; } catch { return {}; } };
+const borrarPendiente = () => { try { localStorage.removeItem(PENDIENTE); } catch { /* nada */ } };
+guardarPendiente();
+
 // Navegación fija a la izquierda, solo en pantallas grandes (en el celular se usa el menú hamburguesa)
 function BarraLateral({ items, perfil, onInicio }) {
   return (
@@ -103,10 +118,12 @@ export default function App() {
     cargarPerfil(sesion.user.id);
     cargarPendientes(sesion.user.id);
     const qs = new URLSearchParams(location.search);
-    const codigo = qs.get("invitacion");
-    const codPartido = qs.get("partido");
-    const codTruco = qs.get("truco");
+    const guardado = leerPendiente();
+    const codigo = qs.get("invitacion") ?? guardado.invitacion;
+    const codPartido = qs.get("partido") ?? guardado.partido;
+    const codTruco = qs.get("truco") ?? guardado.truco;
     if (!codigo && !codPartido && !codTruco) return setListo(true);
+    borrarPendiente();
     (async () => {
       if (codigo) await supabase.rpc("unirse_a_comunidad", { p_codigo: codigo });
       if (codPartido) {
@@ -122,7 +139,7 @@ export default function App() {
   if (sesion === undefined) return <Cargando />;
   if (!sesion) return (
     <>
-      <Auth onPerfilActualizado={() => supabase.auth.getUser().then(({ data }) => cargarPerfil(data.user.id))} />
+      <Auth invitado={CLAVES_LINK.some((k) => leerPendiente()[k])} onPerfilActualizado={() => supabase.auth.getUser().then(({ data }) => cargarPerfil(data.user.id))} />
       <div className="mx-auto max-w-xl px-4 pb-10"><Footer /></div>
     </>
   );
@@ -193,7 +210,7 @@ export default function App() {
       </header>
 
       {!listo ? <Cargando /> : trucoId ? (
-        <TrucoPartida id={trucoId} userId={sesion.user.id} onVolver={() => setTrucoId(null)} onVerPerfil={(id) => { limpiar(); setPerfilId(id); }} />
+        <TrucoPartida id={trucoId} userId={sesion.user.id} onVolver={() => irTruco()} onAbrir={setTrucoId} onVerPerfil={(id) => { limpiar(); setPerfilId(id); }} />
       ) : verTruco ? (
         <Truco userId={sesion.user.id} onAbrir={setTrucoId} onVolver={inicio} />
       ) : verMensajes ? (
